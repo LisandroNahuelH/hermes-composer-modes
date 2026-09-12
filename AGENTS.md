@@ -4,6 +4,12 @@ You are an agent asked to install **Composer Modes for Hermes Agent** from this 
 Follow this file top to bottom. It is self-contained: repo layout, exact commands,
 expected output, and what to do when something fails.
 
+**Supported upstream base:** `NousResearch/hermes-agent` @ `1c671bea` (2026-09-12),
+core patch `repo-2026-09-12-V4`. Upstream moves fast: if `patch.py` reports
+`anchors missing`, port the failing ops to the new base (pattern: CHANGELOG 12.2.1;
+re-run `patch.py --verify-only` until 20/20 anchors match) — never hand-edit the
+five core files.
+
 **Windows-only (v1).** If you are on macOS/Linux: stop. Run `bash install/install.sh`
 (which refuses), and tell the user the port is not shipped yet. Do not hand-patch.
 
