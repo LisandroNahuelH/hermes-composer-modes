@@ -128,24 +128,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\hermes-com
 
 Then `install/cronjob.md` for the updater, and `install/uninstall.ps1` to undo everything.
 
-## Social preview (GitHub)
-
-Canonical image: `assets/social-preview.png` — **1280×640 RGB PNG**, no alpha, ≤1 MB.
-Vector source: `assets/social-preview.svg`. HTML compositor (text-perfect raster): `assets/social-preview.html`.
-
-Rebuild PNG (Windows, Chrome):
-
-```powershell
-$chrome = "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe"
-$html = Join-Path $PWD "assets\social-preview.html"
-& $chrome --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=2 --window-size=1280,640 --screenshot="$PWD\assets\social-preview@2x.png" ([Uri]$html).AbsoluteUri
-python -c "from PIL import Image; im=Image.open('assets/social-preview@2x.png').convert('RGB').resize((1280,640), Image.Resampling.LANCZOS); im.save('assets/social-preview.png','PNG',optimize=True)"
-```
-
-Copy is verbatim English (title, tagline, mode names, Shift+Tab). Do not generate this banner with a diffusion model. After changing the PNG, upload it in GitHub → Settings → Social preview (no public API).
-
-Do not `git reset --hard` to restore art: use `Backups/social-preview-*`.
-
 ## What you must not do
 
 - Do not patch anything outside: the 5 core files, the plugin folder, the state dir

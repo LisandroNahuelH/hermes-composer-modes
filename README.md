@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="assets/social-preview.png" alt="Composer Modes for Hermes Agent — Ask · Agent · Plan · Debug, Shift+Tab" width="1280">
-
 # Composer Modes for Hermes Agent
 
 **Switch how Hermes thinks — without touching what you typed.**
