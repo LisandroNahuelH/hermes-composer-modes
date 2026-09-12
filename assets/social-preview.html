@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Composer Modes — social preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1280px;
+      height: 640px;
+      overflow: hidden;
+      background: #0b0e14;
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      color: #eef3fb;
+      -webkit-font-smoothing: antialiased;
+    }
+    .stage {
+      width: 1280px;
+      height: 640px;
+      padding: 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: linear-gradient(165deg, #0b0e14 0%, #141926 100%);
+      position: relative;
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.035) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+    .content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+    }
+    .brand { display: flex; flex-direction: column; gap: 4px; }
+    h1 {
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      color: #eef3fb;
+    }
+    h1 .modes {
+      background: linear-gradient(90deg, #ff7a59, #ffb199);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .sub {
+      font-size: 18px;
+      font-weight: 400;
+      color: #9fb0c8;
+    }
+    .top-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+    .chips { display: flex; gap: 8px; }
+    .chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 100px;
+    }
+    .pill {
+      height: 36px;
+      padding: 0 16px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #eef3fb;
+      white-space: nowrap;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .chip.ask .dot, .mode-btn .dot { background: #3fb950; }
+    .chip.agent .dot { background: #8b949e; }
+    .chip.plan .dot { background: #58a6ff; }
+    .chip.debug .dot { background: #b94b60; }
+    .chip.ask .pill {
+      background: rgba(63,185,80,0.16);
+      border-color: #3fb950;
+      box-shadow: 0 0 0 3px rgba(63,185,80,0.18), 0 0 24px rgba(63,185,80,0.35);
+    }
+    .micro {
+      font-size: 11px;
+      font-weight: 400;
+      color: #5b677a;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      white-space: nowrap;
+      height: 12px;
+    }
+    .shortcut {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .key {
+      height: 44px;
+      min-width: 44px;
+      padding: 0 14px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 2px 0 rgba(0,0,0,0.35);
+      color: #eef3fb;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .key svg { display: block; flex-shrink: 0; }
+    .key.tab { min-width: 64px; }
+    .shortcut-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: #eef3fb;
+      letter-spacing: 0.01em;
+    }
+    .tagline {
+      font-size: 22px;
+      font-weight: 400;
+      font-style: italic;
+      color: #9fb0c8;
+      line-height: 1.3;
+      max-width: 760px;
+    }
+    .composer {
+      flex: 1;
+      min-height: 0;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+    }
+    .mode-btn {
+      align-self: flex-start;
+      height: 36px;
+      padding: 0 14px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      background: rgba(63,185,80,0.14);
+      border: 1px solid #3fb950;
+      color: #eef3fb;
+    }
+    .bubble {
+      align-self: flex-start;
+      max-width: 480px;
+      padding: 16px 20px;
+      border-radius: 12px 12px 12px 4px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size: 18px;
+      font-weight: 400;
+      color: #eef3fb;
+      line-height: 1.35;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+    .travel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: 28px;
+    }
+    .ghost {
+      flex: 0 0 auto;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px dashed rgba(255,122,89,0.55);
+      background: rgba(20,25,38,0.72);
+      font-size: 14px;
+      font-style: italic;
+      color: #ffb199;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .path {
+      flex: 1;
+      height: 24px;
+      min-width: 48px;
+    }
+    .model {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .model .ring {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ff7a59;
+      box-shadow: 0 0 14px rgba(255,122,89,0.45);
+    }
+    .model span {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #5b677a;
+    }
+    .foot {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-top: 4px;
+    }
+    .rule {
+      width: 64px;
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #ff7a59, #ffb199);
+      flex-shrink: 0;
+    }
+    .url {
+      font-size: 13px;
+      font-weight: 400;
+      color: #5b677a;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="content">
+      <div class="top">
+        <div class="brand">
+          <h1>Composer <span class="modes">Modes</span></h1>
+          <div class="sub">for Hermes Agent</div>
+        </div>
+        <div class="top-right">
+          <div class="chips" aria-label="modes">
+            <div class="chip ask">
+              <div class="pill"><span class="dot"></span>Ask</div>
+              <div class="micro">read-only</div>
+            </div>
+            <div class="chip agent">
+              <div class="pill"><span class="dot"></span>Agent</div>
+              <div class="micro">default</div>
+            </div>
+            <div class="chip plan">
+              <div class="pill"><span class="dot"></span>Plan</div>
+              <div class="micro">plan + approve card</div>
+            </div>
+            <div class="chip debug">
+              <div class="pill"><span class="dot"></span>Debug</div>
+              <div class="micro"></div>
+            </div>
+          </div>
+          <div class="shortcut" aria-label="Shift+Tab">
+            <span class="key" title="Shift">
+              <svg width="13" height="15" viewBox="0 0 13 15" aria-hidden="true">
+                <path fill="#ffb199" d="M6.5 0.4 L0 7.4 h3.4 v4.4 h6.2 V7.4 H13 Z"/>
+                <path fill="#ffb199" d="M1.6 13.6 h9.8 v1.3 H1.6 Z"/>
+              </svg>
+            </span>
+            <span class="key tab" title="Tab">
+              <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true">
+                <path fill="#ffb199" d="M0 5 h9.4 V2.2 L15.6 6 l-6.2 3.8 V6.8 H0 Z"/>
+                <path fill="#ffb199" d="M16.4 0.6 h1.4 v10.8 h-1.4 Z"/>
+              </svg>
+            </span>
+            <span class="shortcut-label">Shift+Tab</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="tagline">“Switch how Hermes thinks — without touching what you typed.”</p>
+
+      <section class="composer" aria-label="composer mockup">
+        <div class="mode-btn"><span class="dot"></span>Ask</div>
+        <div class="bubble">your message, untouched…</div>
+        <div class="travel">
+          <div class="ghost">this turn is read-only</div>
+          <svg class="path" viewBox="0 0 240 24" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="0" y1="12" x2="214" y2="12" stroke="#ff7a59" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="6 5"/>
+            <polygon points="214,5 238,12 214,19" fill="#ff7a59" fill-opacity="0.9"/>
+          </svg>
+          <div class="model">
+            <div class="ring"></div>
+            <span>model</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <div class="rule"></div>
+        <div class="url">github.com/LisandroNahuelH/hermes-composer-modes</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

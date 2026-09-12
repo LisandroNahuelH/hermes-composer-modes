@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-label="Composer Modes for Hermes Agent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0e14"/>
+      <stop offset="1" stop-color="#141926"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff7a59"/>
+      <stop offset="1" stop-color="#ffb199"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity="0.035"/>
+    </pattern>
+    <filter id="askGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#3fb950" flood-opacity="0.55"/>
+    </filter>
+    <style type="text/css"><![CDATA[
+      .sans { font-family: "Segoe UI", Inter, system-ui, sans-serif; }
+    ]]></style>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#grid)"/>
+
+  <!-- brand -->
+  <text x="64" y="112" class="sans" font-size="48" font-weight="700" fill="#eef3fb" letter-spacing="-1.2">Composer <tspan fill="url(#coral)">Modes</tspan></text>
+  <text x="64" y="142" class="sans" font-size="18" fill="#9fb0c8">for Hermes Agent</text>
+
+  <!-- chips -->
+  <g transform="translate(760,72)">
+    <g filter="url(#askGlow)">
+      <rect x="0" y="0" width="100" height="36" rx="18" fill="#3fb950" fill-opacity="0.16" stroke="#3fb950"/>
+    </g>
+    <circle cx="22" cy="18" r="4" fill="#3fb950"/>
+    <text x="34" y="23" class="sans" font-size="14" font-weight="600" fill="#eef3fb">Ask</text>
+    <text x="50" y="54" class="sans" font-size="11" fill="#5b677a" text-anchor="middle">read-only</text>
+
+    <g transform="translate(112,0)">
+      <rect x="0" y="0" width="108" height="36" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <circle cx="22" cy="18" r="4" fill="#8b949e"/>
+      <text x="34" y="23" class="sans" font-size="14" font-weight="600" fill="#eef3fb">Agent</text>
+      <text x="54" y="54" class="sans" font-size="11" fill="#5b677a" text-anchor="middle">default</text>
+    </g>
+
+    <g transform="translate(232,0)">
+      <rect x="0" y="0" width="108" height="36" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <circle cx="22" cy="18" r="4" fill="#58a6ff"/>
+      <text x="34" y="23" class="sans" font-size="14" font-weight="600" fill="#eef3fb">Plan</text>
+      <text x="54" y="54" class="sans" font-size="11" fill="#5b677a" text-anchor="middle">plan + approve card</text>
+    </g>
+
+    <g transform="translate(352,0)">
+      <rect x="0" y="0" width="104" height="36" rx="18" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+      <circle cx="22" cy="18" r="4" fill="#b94b60"/>
+      <text x="34" y="23" class="sans" font-size="14" font-weight="600" fill="#eef3fb">Debug</text>
+    </g>
+  </g>
+
+  <!-- Shift+Tab -->
+  <g transform="translate(968,148)">
+    <rect x="0" y="0" width="44" height="44" rx="8" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.16"/>
+    <path fill="#ffb199" d="M22 8 L11 20 h5.5 v7 h11 v-7 H33 Z"/>
+    <rect x="14" y="30.5" width="16" height="2.2" rx="0.6" fill="#ffb199"/>
+    <rect x="52" y="0" width="56" height="44" rx="8" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.16"/>
+    <path fill="#ffb199" d="M62 20 h16 v-5 L90 22 l-12 7 v-5 H62 Z"/>
+    <rect x="94" y="12" width="2.2" height="20" rx="0.6" fill="#ffb199"/>
+    <text x="122" y="29" class="sans" font-size="16" font-weight="600" fill="#eef3fb">Shift+Tab</text>
+  </g>
+
+  <text x="64" y="214" class="sans" font-size="22" font-style="italic" fill="#9fb0c8">“Switch how Hermes thinks — without touching what you typed.”</text>
+
+  <!-- composer glass -->
+  <rect x="64" y="236" width="1152" height="316" rx="16" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+
+  <rect x="92" y="260" width="92" height="36" rx="18" fill="#3fb950" fill-opacity="0.14" stroke="#3fb950"/>
+  <circle cx="114" cy="278" r="4" fill="#3fb950"/>
+  <text x="126" y="283" class="sans" font-size="14" font-weight="600" fill="#eef3fb">Ask</text>
+
+  <rect x="92" y="316" width="292" height="56" rx="12" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.14"/>
+  <text x="112" y="351" class="sans" font-size="18" fill="#eef3fb">your message, untouched…</text>
+
+  <rect x="120" y="400" width="188" height="40" rx="8" fill="#141926" fill-opacity="0.72" stroke="#ff7a59" stroke-opacity="0.55" stroke-dasharray="5 4"/>
+  <text x="136" y="425" class="sans" font-size="14" font-style="italic" fill="#ffb199">this turn is read-only</text>
+
+  <line x1="320" y1="420" x2="1088" y2="420" stroke="#ff7a59" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="6 5"/>
+  <polygon points="1088,413 1116,420 1088,427" fill="#ff7a59" fill-opacity="0.9"/>
+
+  <circle cx="1164" cy="420" r="40" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.12"/>
+  <circle cx="1164" cy="408" r="10" fill="none" stroke="#ff7a59" stroke-width="2"/>
+  <text x="1164" y="436" class="sans" font-size="11" font-weight="600" fill="#5b677a" text-anchor="middle">model</text>
+
+  <rect x="64" y="572" width="64" height="3" rx="1.5" fill="url(#coral)"/>
+  <text x="144" y="578" class="sans" font-size="13" fill="#5b677a">github.com/LisandroNahuelH/hermes-composer-modes</text>
+</svg>
