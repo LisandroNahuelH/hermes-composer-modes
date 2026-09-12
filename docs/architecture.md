@@ -89,3 +89,20 @@ cronjob.md ──▶ Hermes cronjob (weekly) ──▶ git pull + install.ps1 -R
 
 The installer never kills the backend inline (the installing agent *is* that
 backend): the restart is a one-shot scheduled task with a ~45 s fuse.
+
+## Social preview (how the product is seen)
+
+`assets/social-preview.png` (1280×640) is the GitHub Open Graph / social preview
+and the README header. It is **drawn in HTML/SVG**, not by an image model, so every
+string stays exact.
+
+Visual story, left-to-right:
+
+1. Four mode chips (Ask green / Agent gray / Plan blue / Debug red).
+2. `Shift+Tab` (⇧⇥) as the cycle.
+3. A **pristine user bubble** plus a **ghost note** (`this turn is read-only`) on a
+   dashed thread into the model — the hidden sidecar, not the transcript.
+4. Wordmark + tagline: “Switch how Hermes thinks — without touching what you typed.”
+
+Palette matches the plugin: background `#0b0e14→#141926`, coral `#ff7a59→#ffb199`,
+glass `rgba(255,255,255,0.04)`. `assets/banner.svg` remains the small 820×220 mark.
