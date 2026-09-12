@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="220" viewBox="0 0 820 220" role="img" aria-label="Composer Modes for Hermes Agent">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0e14"/>
+      <stop offset="1" stop-color="#141926"/>
+    </linearGradient>
+    <linearGradient id="coral" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff7a59"/>
+      <stop offset="1" stop-color="#ffb199"/>
+    </linearGradient>
+    <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+      <path d="M26 0H0V26" fill="none" stroke="#ffffff" stroke-opacity="0.035"/>
+    </pattern>
+  </defs>
+
+  <rect width="820" height="220" rx="18" fill="url(#bg)"/>
+  <rect width="820" height="220" rx="18" fill="url(#grid)"/>
+  <rect x="1" y="1" width="818" height="218" rx="17" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+
+  <!-- mode button motif -->
+  <g transform="translate(56,64)">
+    <rect x="0" y="0" width="168" height="44" rx="22" fill="#1c2333" stroke="#2c364c"/>
+    <circle cx="24" cy="22" r="6" fill="#3fb950"/>
+    <text x="40" y="28" font-family="Segoe UI, system-ui, sans-serif" font-size="15" fill="#c9d4e6">Ask</text>
+    <text x="118" y="27" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#5b677a" opacity="0.9">⇧TAB</text>
+  </g>
+
+  <g transform="translate(56,124)">
+    <circle cx="8" cy="8" r="5" fill="#8b949e"/>
+    <circle cx="28" cy="8" r="5" fill="#58a6ff"/>
+    <circle cx="48" cy="8" r="5" fill="#b94b60"/>
+    <text x="66" y="13" font-family="Segoe UI, system-ui, sans-serif" font-size="13" fill="#7b879c">one keystroke — the note travels hidden, your words do not change</text>
+  </g>
+
+  <!-- wordmark -->
+  <text x="290" y="92" font-family="Segoe UI, system-ui, sans-serif" font-size="40" font-weight="700" fill="#eef3fb">Composer <tspan fill="url(#coral)">Modes</tspan></text>
+  <text x="290" y="122" font-family="Segoe UI, system-ui, sans-serif" font-size="16" fill="#9fb0c8">for Hermes Agent</text>
+  <text x="290" y="158" font-family="Segoe UI, system-ui, sans-serif" font-size="14" font-style="italic" fill="#7b879c">“Switch how Hermes thinks — without touching what you typed.”</text>
+
+  <rect x="290" y="176" width="64" height="3" rx="1.5" fill="url(#coral)"/>
+</svg>
