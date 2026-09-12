@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.2.3 — 2026-09-12
+
+- **core-patch**: an announced `agent` frame no longer adopts a staged twin. The staged
+  channel (v12.2 parity, one slot per session) could hold a queued ask/plan/debug note
+  that a later agent send then picked up, stamping it with a foreign mode. `prompt.submit`
+  now drops the staged twin when the submit announces `mode=agent` (explicit frames for
+  other modes and stageless legacy flows are unchanged).
+
 ## 12.2.2 — 2026-09-12
 
 - **installer**: the one-shot backend-restart task (`install.ps1`, `uninstall.ps1`) is now
