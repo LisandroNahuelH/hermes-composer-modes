@@ -121,6 +121,14 @@ Write-Host '[composer-modes] reminder: delete the update cronjob in Hermes (ask 
 if ($restored.Count -gt 0 -and -not $WhatIfPreference) {
   $restartPs1 = Join-Path $PSScriptRoot 'restart-backend.ps1'
   schtasks /create /tn 'HermesComposerModesRestart' /tr "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$restartPs1`"" /sc once /st 00:00 /f | Out-Null
+  # schtasks defaults to "do not start on battery" - laptops never fire the one-shot.
+  try {
+    $st = Get-ScheduledTask -TaskName 'HermesComposerModesRestart'
+    $st.Settings.DisallowStartIfOnBatteries = $false
+    $st.Settings.StopIfGoingOnBatteries = $false
+    $st.Settings.StartWhenAvailable = $true
+    Set-ScheduledTask -TaskName 'HermesComposerModesRestart' -Settings $st.Settings | Out-Null
+  } catch { Write-Host "[composer-modes] WARN: could not make the restart task battery-safe: $_" }
   schtasks /run /tn 'HermesComposerModesRestart' | Out-Null
   Write-Host '[composer-modes] backend restart scheduled (detached).'
 }

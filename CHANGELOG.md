@@ -1,5 +1,13 @@
 # Changelog
 
+## 12.2.2 — 2026-09-12
+
+- **installer**: the one-shot backend-restart task (`install.ps1`, `uninstall.ps1`) is now
+  created battery-safe (`DisallowStartIfOnBatteries=false`, `StopIfGoingOnBatteries=false`,
+  `StartWhenAvailable=true`). Plain `schtasks` defaults blocked it on laptops — the task
+  never ran (`0x41303`), so the post-install backend restart silently stalled until the
+  next Hermes update. The guardian task was already battery-safe.
+
 ## 12.2.1 — 2026-09-12
 
 - **core-patch**: forward-port the three drifted anchors to upstream `1c671bea`

@@ -137,6 +137,15 @@ try {
     $task = 'HermesComposerModesRestart'
     schtasks /create /tn $task /tr "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$restartPs1`"" /sc once /st 00:00 /f | Out-Null
     if ($LASTEXITCODE -ne 0) { Fail 1 "could not schedule the backend restart task (schtasks exit $LASTEXITCODE)" }
+    # schtasks defaults to "do not start on battery": on a laptop that silently blocks the
+    # one-shot (0x41303, never runs) even for /run. Match the guardian's battery-safe flags.
+    try {
+      $st = Get-ScheduledTask -TaskName $task
+      $st.Settings.DisallowStartIfOnBatteries = $false
+      $st.Settings.StopIfGoingOnBatteries = $false
+      $st.Settings.StartWhenAvailable = $true
+      Set-ScheduledTask -TaskName $task -Settings $st.Settings | Out-Null
+    } catch { Log "WARN: could not make the restart task battery-safe: $_" }
     schtasks /run /tn $task | Out-Null
     $restart = 'scheduled (the app respawns the backend on its next dial)'
     Log "backend restart $restart"
