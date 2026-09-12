@@ -1,5 +1,14 @@
 # Changelog
 
+## 12.2.1 — 2026-09-12
+
+- **core-patch**: forward-port the three drifted anchors to upstream `1c671bea`
+  (2026-09-12): `prompt_turn` `_run_prompt_submit` signature (Collective-Wisdom
+  revert upstream), the `session.note.stage` insertion point (new `_CLIENT_SURFACES`
+  block), and the refusal re-stage tail (`client_surface` rewrite). Plugin
+  unchanged (v12.2). Gates: `patch.py --verify-only` 20/20 anchors,
+  `verify_core.py` VERIFIED on the refreshed base.
+
 ## 12.2.0 — 2026-09-11
 
 First public release.
