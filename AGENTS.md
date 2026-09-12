@@ -71,6 +71,8 @@ lines), `verify exit=0`, backend restart `scheduled`.
 task that kills the backend ~45 s later; the app respawns it on the next message.
 If your own turn dies right after step 3, that is this restart, not a failure — the
 install already finished (log written) before the restart runs. Wait, then continue.
+The restart task is battery-safe since 12.2.2 — older installs (`0x41303`) never ran it
+on battery.
 
 ## 4. Guardian task
 
@@ -120,6 +122,7 @@ one-liner for the live test result.
 | `verify exit=1` | verification failed after patching | the patcher **rolled back automatically** and the backend was NOT restarted; report the log |
 | `ROLLBACK INCOMPLETE (exit 4)` | restore failed (locked file) | the log lists the file(s); restore them from the listed `.bak-*`; then report |
 | installer exit 3 | another run holds the lock | wait 30 min or rerun later; it is a no-op guard, not an error |
+| task never ran (`0x41303`/`267011` in `schtasks /query /v`) | pre-12.2.2 restart tasks are blocked on battery | recreate via `install.ps1` (12.2.2+ is battery-safe), or clear the battery condition by hand |
 
 Never edit the five patched files by hand to “make it work”, never delete the
 manifest, and never re-run the installer with `--force` flags that do not exist.

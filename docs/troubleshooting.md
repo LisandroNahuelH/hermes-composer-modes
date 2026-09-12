@@ -56,7 +56,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\install\uninstall.ps1
 The installer schedules a one-shot task that kills `hermes_cli.main serve` ~45 s
 after the run; the app respawns it on the next message. If the note still does not
 travel, check `restart.log` (killed?) and `agent.log` for the backend boot
-timestamps; then `install.ps1 -Repair` once more and send a fresh message.
+timestamps; then `install.ps1 -Repair` once more and send a fresh message. If
+`restart.log` is missing and `schtasks /query /tn HermesComposerModesRestart /v`
+shows `267011` (`0x41303`), the task never ran — pre-12.2.2 tasks are blocked on
+battery; re-run `install.ps1` (12.2.2+ sets battery-safe flags).
 
 ## Hot-reload not firing
 
