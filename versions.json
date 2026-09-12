@@ -1,0 +1,7 @@
+{
+  "version": "12.2.0",
+  "plugin_sha256": "6a9d9e4bc62456bd27182a7165e16404f5bd4e23931b8680ab21efe44c9da49a",
+  "core_patch_id": "repo-2026-09-11-V3",
+  "min_hermes": "0.20.0",
+  "updated_at": "2026-09-11"
+}
