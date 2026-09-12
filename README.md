@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="Composer Modes — Ask · Agent · Plan · Debug" width="820">
+<img src="assets/social-preview.png" alt="Composer Modes for Hermes Agent — Ask · Agent · Plan · Debug, Shift+Tab" width="1280">
 
 # Composer Modes for Hermes Agent
 
