@@ -1,0 +1,20 @@
+# agent/editor junk
+*.bak
+*.bak-*
+.DS_Store
+Thumbs.db
+desktop.ini
+__pycache__/
+*.pyc
+
+# local install artifacts (never commit)
+composer-modes-patch-manifest.json
+install.lock
+
+# environments
+.venv/
+venv/
+
+# editor
+.vscode/
+.idea/
