@@ -1,5 +1,11 @@
 # Changelog
 
+## 12.3.1 - 2026-09-14
+
+- **plugin (v12.3)**: composer mode button UI - the version tag to its right is
+  gone; the version now lives in the hover tooltip. The button sits next to the
+  model pill in the composer's right cluster and no longer shrinks or wraps
+  (`shrink-0` + `whitespace-nowrap`). `VER` is now `v12.3`.
 ## 12.3.0 - 2026-09-12
 
 - **desktop-patch/**: the desktop-renderer seam (composer-mode frame + per-entry

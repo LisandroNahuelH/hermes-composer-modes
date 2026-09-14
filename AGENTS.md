@@ -124,7 +124,7 @@ $H = "$env:LOCALAPPDATA\hermes"
 #    expect: VERIFIED (exit 0)
 # 6b. plugin loaded (app open): last register probe
 Get-Content "$H\logs\desktop.log" -Tail 500 | Select-String 'composer-modes.*register' | Select-Object -Last 1
-#    expect a line with ver=v12.2 (or the version in versions.json)
+#    expect a line with ver=v12.3 (or the version in versions.json)
 # 6c. hidden note end-to-end (optional but conclusive)
 #    Ask the user to send ONE message with any mode on, then:
 #    - read the newest row:  SELECT content, api_content FROM messages ORDER BY id DESC LIMIT 1;

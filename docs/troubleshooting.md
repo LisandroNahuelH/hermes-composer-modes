@@ -16,7 +16,7 @@
 
 In `desktop.log` (tail with `Get-Content … -Tail 500`):
 
-- `[cm-pa] register ver=v12.2 …` — plugin loaded in a window (hot-reload fires on save).
+- `[cm-pa] register ver=v12.3 …` — plugin loaded in a window (hot-reload fires on save).
 - `[cm-pa] mw v12 derive mode=ask note=1126` — a fresh submit derived a note.
 - `[cm-pa] mw v12 pass note=140` — a queued entry drained with its frozen frame.
 

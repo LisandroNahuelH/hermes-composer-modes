@@ -1,5 +1,5 @@
 /**
- * composer-modes — Cursor-style mode selector for the Hermes composer. v12.2.
+ * composer-modes — Cursor-style mode selector for the Hermes composer. v12.3.
  *
  * Botón único de modos en la tira del composer (ask/agent/plan/debug). Un ComposerMiddleware
  * adjunta el FRAME del modo al draft (v12.0: `mode` + `note` como DATO, sin RPC): el shell manda
@@ -125,7 +125,7 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
 const ID = 'composer-modes'
-const VER = 'v12.2'
+const VER = 'v12.3'
 const BOOT = Date.now().toString(36).slice(-4)
 
 /** Sonda → desktop.log vía console.error (único nivel capturado). */
@@ -1529,17 +1529,17 @@ export default {
       }, [sid])
 
       return jsxs('div', {
-        className: 'flex items-center gap-0.5',
+        className: 'flex shrink-0 items-center gap-0.5',
         children: [
           jsx(Tip, {
             key: 'mode',
-            label: `${current.hint} · clic o Shift+Tab: Ask → Agent → Plan → Debug`,
+            label: `${current.hint} · clic o Shift+Tab: Ask → Agent → Plan → Debug · ${VER}·${BOOT}`,
             children: jsxs('button', {
               type: 'button',
               'data-mode': current.id,
               'aria-label': `Modo ${current.label} — clic o Shift+Tab para cambiar`,
               className: cn(
-                'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium transition-opacity',
+                'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.6875rem] font-medium transition-opacity',
                 'hover:opacity-90'
               ),
               style: {
@@ -1553,11 +1553,6 @@ export default {
                 jsx(Codicon, { key: 'c', name: 'chevron-down', size: '0.625rem', className: 'shrink-0 opacity-60' })
               ]
             })
-          }),
-          jsx('span', {
-            key: 'ver',
-            className: 'ml-1 text-[0.625rem] text-(--ui-text-tertiary)',
-            children: `${VER}·${BOOT}`
           })
         ]
       })
