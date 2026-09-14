@@ -43,7 +43,7 @@ foreach ($i in 1..5) {
   try { Move-Item (Join-Path $rel 'win-unpacked') $bak -ErrorAction Stop; $ok = $true; break }
   catch { Start-Sleep -Seconds 3 }
 }
-if (-not $ok) { L 'ERROR: could not move the old build aside (locked) -- aborting, app left as-is'; exit 1 }
+if (-not $ok) { L 'ERROR: could not move the old build aside (locked) -- relaunching the app as-is'; Start-Process (Join-Path $rel 'win-unpacked\Hermes.exe'); exit 1 }
 L "old build -> $bak"
 
 $ok = $false
@@ -52,8 +52,9 @@ foreach ($i in 1..5) {
   catch { Start-Sleep -Seconds 3 }
 }
 if (-not $ok) {
-  L 'ERROR: could not move the new build in -- restoring old'
+  L 'ERROR: could not move the new build in -- restoring old and relaunching'
   Move-Item $bak (Join-Path $rel 'win-unpacked')
+  Start-Process (Join-Path $rel 'win-unpacked\Hermes.exe')
   exit 1
 }
 L 'new build in place (win-unpacked)'
