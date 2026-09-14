@@ -1,15 +1,18 @@
 # composer-modes installer — idempotent, reversible, auditable.
-# Copies the plugin, applies the transactional core patch, verifies, and schedules
+# Copies the plugin, applies the transactional core patch, verifies, applies the
+# desktop-renderer seam (desktop-patch + app rebuild + staged swap), and schedules
 # a detached backend restart when the core changed.
 #
 #   .\install.ps1            apply (no-op when already installed)
 #   .\install.ps1 -Repair    same, meant for the scheduled task
 #   .\install.ps1 -WhatIf    full dry run: writes nothing, schedules nothing
+#   .\install.ps1 -SkipDesktopSeam    skip the renderer patch + app rebuild
 #
 # Exit codes: 0 ok/no-op | 1 error | 2 preflight failed | 3 already running
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
   [switch]$Repair,
+  [switch]$SkipDesktopSeam,
   [string]$HermesHome,
   [string]$AgentDir,
   [string]$LogPath
@@ -130,9 +133,42 @@ try {
     Fail 1 'verification failed - NOT restarting the backend.'
   }
 
+  # -- 3b. desktop seam: renderer patch + app rebuild + staged swap -----------
+  $desktop = 'skipped (-SkipDesktopSeam)'
+  $desktopSwapScheduled = $false
+  if (-not $SkipDesktopSeam) {
+    $buildPs1 = Join-Path $PSScriptRoot 'build-desktop-seam.ps1'
+    if (-not (Test-Path $buildPs1 -PathType Leaf)) {
+      $desktop = 'skipped (build-desktop-seam.ps1 not found)'
+    } else {
+      $bargs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $buildPs1, '-HermesHome', $HermesDir, '-AgentDir', $AgentDir)
+      if ($WhatIfPreference) { $bargs += '-WhatIf' }
+      $prevEap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+      $bout = & powershell.exe @bargs 2>&1 | Out-String
+      $bcode = $LASTEXITCODE
+      $ErrorActionPreference = $prevEap
+      $bout.Trim() -split "`n" | ForEach-Object { if ($_) { Log ("  " + $_.Trim()) } }
+      if ($bcode -eq 2) {
+        $desktop = 'skipped (node/npm toolchain missing - the staged-note channel still covers stock builds; see docs/limits.md)'
+        Log ("desktop seam " + $desktop)
+      } elseif ($bcode -ne 0) {
+        Fail 1 "desktop seam failed (exit $bcode) - see docs/troubleshooting.md"
+      } else {
+        $dline = @($bout -split "`n" | Where-Object { $_ -match 'done desktop=' } | Select-Object -Last 1)
+        if ($dline.Count -gt 0) {
+          $desktop = ($dline[0].Trim() -replace '^\[composer-modes\]\s*', '' -replace '^done\s+', '')
+          $desktopSwapScheduled = [bool]($dline[0] -match 'swap=scheduled')
+        } else { $desktop = 'ok' }
+      }
+    }
+  }
+
   # ── 4. detached backend restart (only when the core changed) ───────────────
   $restart = 'skipped (core unchanged)'
-  if ($coreApplied -and -not $WhatIfPreference) {
+  if ($coreApplied -and $desktopSwapScheduled -and -not $WhatIfPreference) {
+    $restart = 'covered by the desktop swap (the relaunched app dials a fresh backend)'
+    Log "backend restart $restart"
+  } elseif ($coreApplied -and -not $WhatIfPreference) {
     $restartPs1 = Join-Path $PSScriptRoot 'restart-backend.ps1'
     $task = 'HermesComposerModesRestart'
     schtasks /create /tn $task /tr "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$restartPs1`"" /sc once /st 00:00 /f | Out-Null
@@ -158,7 +194,7 @@ try {
     if ($reg) { Log ('plugin register probe: ' + $reg.Line.Trim()) }
   }
 
-  Log ("done plugin=$pluginAction core=" + $(if ($coreApplied) { 'patched' } else { 'unchanged' }) + " restart=$restart")
+  Log ("done plugin=$pluginAction core=" + $(if ($coreApplied) { 'patched' } else { 'unchanged' }) + " desktop=$desktop restart=$restart")
   if ($Repair -and -not $coreApplied -and $pluginAction -eq 'up-to-date') { }
   exit 0
 }

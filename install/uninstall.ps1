@@ -8,6 +8,8 @@
 #      restores the matching backup, then verifies sha256_before)
 #   2. newest sibling backup               (<file>.bak-<stamp>-<rand>)
 #   3. git checkout origin/main -- <file>  (only when the checkout is a git repo)
+# The desktop seam restores from composer-modes-desktop-patch-manifest.json (and its
+# tests twin); the newest pre-seam app build is staged for a detached swap-back.
 # Exit codes: 0 ok | 1 problems | 2 preflight failed
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
@@ -39,6 +41,7 @@ if (-not $AgentDir) { $AgentDir = Join-Path $HermesDir 'hermes-agent' }
 if (-not (Test-Path (Join-Path $AgentDir 'tui_gateway\methods_prompt.py') -PathType Leaf)) { Fail 2 "no agent checkout at $AgentDir" }
 
 $problems = @()
+$appSwapScheduled = $false
 $manifestPath = Join-Path $AgentDir 'composer-modes-patch-manifest.json'
 $restored = @()
 
@@ -92,6 +95,60 @@ if (Test-Path $manifestPath) {
   }
 }
 
+# -- desktop seam: restore the renderer sources, then the app itself ---------
+foreach ($mName in @('composer-modes-desktop-patch-manifest.json', 'composer-modes-desktop-tests-manifest.json')) {
+  $mPath = Join-Path $AgentDir $mName
+  if (-not (Test-Path $mPath)) { continue }
+  $dmanifest = Get-Content $mPath -Raw | ConvertFrom-Json
+  foreach ($entry in $dmanifest.files) {
+    $target = Join-Path $AgentDir ($entry.file -replace '/', '\')
+    if ($entry.kind -eq 'create') {
+      if (Test-Path $target) {
+        if ($PSCmdlet.ShouldProcess($target, 'remove created file')) {
+          Remove-Item $target -Force
+          $restored += "$($entry.file) (created file removed)"
+        }
+      }
+      continue
+    }
+    if (-not (Test-Path $target)) { $problems += "missing target: $($entry.file)"; continue }
+    if ((Sha $target) -ne $entry.sha_after.ToLower()) {
+      $problems += "REFUSED $($entry.file): current hash differs from the recorded patched hash (edited after patching?)"
+      continue
+    }
+    if (-not (Test-Path $entry.bak)) { $problems += "backup gone: $($entry.bak)"; continue }
+    if ($PSCmdlet.ShouldProcess($target, "restore from $($entry.bak)")) {
+      Copy-Item $entry.bak $target -Force
+      if ((Sha $target) -ne $entry.sha_before.ToLower()) { $problems += "restore hash mismatch: $($entry.file)" }
+      else { $restored += $entry.file }
+    }
+  }
+  if ($PSCmdlet.ShouldProcess($mPath, 'remove manifest')) { Remove-Item $mPath -Force }
+}
+
+$relDir = Join-Path $AgentDir 'apps\desktop\release'
+$bakRoot = Join-Path $HermesDir 'composer-modes\backups'
+$seamBackup = Get-ChildItem $bakRoot -Filter 'win-unpacked.pre-seam-*' -Directory -ErrorAction SilentlyContinue |
+  Sort-Object Name -Descending | Select-Object -First 1
+if ($seamBackup -and (Test-Path (Join-Path $seamBackup.FullName 'Hermes.exe')) -and (Test-Path $relDir)) {
+  if ($PSCmdlet.ShouldProcess($relDir, "restore app from $($seamBackup.Name)")) {
+    $newDir = Join-Path $relDir 'win-unpacked.new'
+    if (Test-Path $newDir) { Remove-Item $newDir -Force -Recurse -ErrorAction SilentlyContinue }
+    robocopy $seamBackup.FullName $newDir /E /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -lt 8 -and (Test-Path (Join-Path $newDir 'Hermes.exe'))) {
+      $swapPs1 = Join-Path $PSScriptRoot 'desktop-swap.ps1'
+      if (Test-Path $swapPs1) {
+        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$swapPs1`"", '-AgentDir', "`"$AgentDir`"", '-StateDir', "`"$HermesDir\composer-modes`"") | Out-Null
+        $appSwapScheduled = $true
+        Write-Host '[composer-modes] app restore scheduled (detached swap of the pre-seam build).'
+      }
+    } else { $problems += 'could not stage the pre-seam app build for restore' }
+  }
+} elseif (-not $WhatIfPreference) {
+  Write-Host '[composer-modes] note: no pre-seam app backup found - the installed app stays a seam build until the next Hermes update rebuilds it.'
+}
+
+
 # ── plugin: back it up next to the state dir, then remove ────────────────────
 $pluginDir = Join-Path $HermesDir 'desktop-plugins\composer-modes'
 $pluginFile = Join-Path $pluginDir 'plugin.js'
@@ -118,7 +175,7 @@ foreach ($task in @('HermesComposerModesEnsure', 'HermesComposerModesRestart')) 
 Write-Host '[composer-modes] reminder: delete the update cronjob in Hermes (ask your agent: "remove the composer-modes update cronjob").'
 
 # ── restart the backend so the unpatched core loads (detached) ───────────────
-if ($restored.Count -gt 0 -and -not $WhatIfPreference) {
+if ($restored.Count -gt 0 -and -not $WhatIfPreference -and -not $appSwapScheduled) {
   $restartPs1 = Join-Path $PSScriptRoot 'restart-backend.ps1'
   schtasks /create /tn 'HermesComposerModesRestart' /tr "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$restartPs1`"" /sc once /st 00:00 /f | Out-Null
   # schtasks defaults to "do not start on battery" - laptops never fire the one-shot.
