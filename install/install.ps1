@@ -156,7 +156,7 @@ try {
       } else {
         $dline = @($bout -split "`n" | Where-Object { $_ -match 'done desktop=' } | Select-Object -Last 1)
         if ($dline.Count -gt 0) {
-          $desktop = ($dline[0].Trim() -replace '^\[composer-modes\]\s*', '' -replace '^done\s+', '')
+          $desktop = ($dline[0].Trim() -replace '^\[composer-modes\]\s*', '' -replace '^done\s+', '' -replace '^desktop=', '')
           $desktopSwapScheduled = [bool]($dline[0] -match 'swap=scheduled')
         } else { $desktop = 'ok' }
       }
