@@ -5,7 +5,7 @@ Follow this file top to bottom. It is self-contained: repo layout, exact command
 expected output, and what to do when something fails.
 
 **Supported upstream base:** `NousResearch/hermes-agent` @ `1c671bea` (2026-09-12),
-core patch `repo-2026-09-12-V4`. Upstream moves fast: if `patch.py` reports
+core patch `repo-2026-09-12-V5` + desktop patch `repo-2026-09-12-D1`. Upstream moves fast: if `patch.py` reports
 `anchors missing`, port the failing ops to the new base (pattern: CHANGELOG 12.2.1;
 re-run `patch.py --verify-only` until 20/20 anchors match) — never hand-edit the
 five core files.
@@ -74,6 +74,30 @@ install already finished (log written) before the restart runs. Wait, then conti
 The restart task is battery-safe since 12.2.2 — older installs (`0x41303`) never ran it
 on battery.
 
+## 3b. Desktop seam (queue freeze) - automatic, explained here
+
+The installer also patches the **desktop renderer** and rebuilds the app
+(`install\build-desktop-seam.ps1`, run as step 3b of install.ps1). Expected lines:
+
+```
+desktop patch exit=0
+npm run build ok
+electron-builder ok
+staged build ok: ...
+win-unpacked.new staged + verified
+done desktop=patched build=built swap=scheduled (detached; the app closes + relaunches when it lands)
+```
+
+- No toolchain (node/npm missing): the step skips itself with a warning; the
+  staged-note channel still covers stock builds. `-SkipDesktopSeam` skips it
+  deliberately; everything else about the install is unaffected.
+- Switches on `build-desktop-seam.ps1`: `-Force` (rebuild even when the seam
+  looks current), `-NoSwap` (stage without swapping), `-WhatIf` (verify anchors
+  only, no writes, no build).
+- Logs: `state\desktop-build.log`, `state\app-swap.log`; manifests
+  `composer-modes-desktop-patch-manifest.json` (+ a `-tests-` twin) in the
+  checkout.
+
 ## 4. Guardian task
 
 ```powershell
@@ -106,6 +130,8 @@ Get-Content "$H\logs\desktop.log" -Tail 500 | Select-String 'composer-modes.*reg
 #    - read the newest row:  SELECT content, api_content FROM messages ORDER BY id DESC LIMIT 1;
 #      (state.db under the Hermes home) -> api_content is longer than content by exactly
 #      the note (+2 framing chars; Ask mode adds the note on both ends: +4 + 2*note_len)
+# 6d. desktop seam marker in the installed app (expect one hit)
+#    Select-String -Path "$env:LOCALAPPDATA\hermes\hermes-agent\apps\desktop\release\win-unpacked\resources\app.asar.unpacked\dist\assets\*.js" -SimpleMatch 'fromQueue' -List | Select-Object -First 1
 ```
 
 Report to the user, in their language, as a short table: installed version,
@@ -123,6 +149,9 @@ one-liner for the live test result.
 | `ROLLBACK INCOMPLETE (exit 4)` | restore failed (locked file) | the log lists the file(s); restore them from the listed `.bak-*`; then report |
 | installer exit 3 | another run holds the lock | wait 30 min or rerun later; it is a no-op guard, not an error |
 | task never ran (`0x41303`/`267011` in `schtasks /query /v`) | pre-12.2.2 restart tasks are blocked on battery | recreate via `install.ps1` (12.2.2+ is battery-safe), or clear the battery condition by hand |
+| desktop patch exit=2 | renderer anchors missing = upstream drift | nothing written; re-anchor via `desktop-patch/gen_ops.py` (see docs/troubleshooting.md) |
+| desktop build failed | toolchain/compile error in step 3b | the live app is untouched (staging build); read `desktop-build.log`, fix, re-run `install.ps1 -Repair` |
+| freeze gone after a Hermes update | the update rebuilt the stock app | `install.ps1 -Repair` (guardian: within 6 h) or `build-desktop-seam.ps1 -Force` |
 
 Never edit the five patched files by hand to “make it work”, never delete the
 manifest, and never re-run the installer with `--force` flags that do not exist.

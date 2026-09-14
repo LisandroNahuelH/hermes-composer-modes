@@ -7,7 +7,7 @@
 Four composer modes, one keystroke each. The mode's operating note reaches the
 model, never your bubble, your transcript, or your session titles.
 
-`License: MIT` · `Platform: Windows (v1)` · `Version: 12.2.0` · `Plugin + core seam + installer`
+`License: MIT` · `Platform: Windows (v1)` · `Version: 12.3.0` · `Plugin + core + desktop seams + installer`
 
 </div>
 
@@ -38,7 +38,7 @@ sidebar preview and the auto-title stay exactly what you typed.
 ```
 composer ── mid-cycle ──▶ plugin (mode + note)
    │                          │
-   │                          ├─ new builds: note rides the submit frame (engine-side seam)
+   │                          ├─ seam builds (this repo): note rides the submit frame
    │                          └─ stock builds: session.note.stage (one-shot, TTL 30 s)
    ▼
 prompt.submit ── note ──▶ gateway ──▶ api_content (model)      content (you, untouched)
@@ -50,7 +50,8 @@ prompt.submit ── note ──▶ gateway ──▶ api_content (model)      c
 |---|---|---|---|
 | 1 | **Plugin** | `plugin/composer-modes/plugin.js` — the modes, cards, probes | `%LOCALAPPDATA%\hermes\desktop-plugins\composer-modes\` |
 | 2 | **Core seam** | `core-patch/` — a transactional, anchored patch: note param, `session.note.stage`, ask sandwich, pristine titles | your `hermes-agent` checkout (5 files, reversible) |
-| 3 | **Installer** | `install/install.ps1` — preflight, sha256 gate, backup + manifest, verify gate, detached restart | runs from this repo |
+| 3 | **Desktop seam** | `desktop-patch/` + `install/build-desktop-seam.ps1` — anchored renderer ops, app rebuild, staged swap (the per-entry queue freeze) | your checkout + the built app |
+| 4 | **Installer** | `install/install.ps1` — preflight, sha256 gate, backup + manifest, verify gate, detached restart | runs from this repo |
 
 Plus two guardians, so it keeps working while you forget it exists:
 
@@ -106,9 +107,12 @@ You are about to let a repo patch your Hermes. That deserves plain answers:
 - **Hermes updates reset the checkout** — this is precisely why the Windows task
   re-applies the patch. If an update lands while the task is off, run `install.ps1` once.
 - **Perfect per-entry queue freeze** (a queued message keeps the mode it had when
-  queued, even if you switch modes meanwhile) rides the desktop-side seam that
-  ships with the upstream PR. On stock builds the staged-note channel covers the
-  normal path (single sends and the busy queue carry).
+  queued, even if you switch modes meanwhile) rides the desktop seam this repo
+  ships: the installer patches the renderer sources and rebuilds the app
+  (`desktop-patch/` + `install/build-desktop-seam.ps1`). The rebuild needs
+  node/npm and a few minutes (see `docs/limits.md`). Until it runs, the
+  staged-note channel covers the normal path (single sends and the busy queue
+  carry).
 - **The note is an instruction to the model, not a hard sandbox.** Ask mode is
   enforced by a strict operating note (and the mandated closing line), not by
   tool-gating in the core.
@@ -132,12 +136,20 @@ Hash-verified restore of the 5 files, plugin removal (a copy is kept under
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | probes, DB recipe, drift recovery |
 | [`install/cronjob.md`](install/cronjob.md) | the update cronjob, ready to paste |
 
-## Alternative: the upstream PR
+## The desktop seam (ships in this repo)
 
-The desktop-side seam (draft note/mode plumbing + queue freeze) is proposed
-upstream in `NousResearch/hermes-agent` — if it merges, stock builds get the
-frame natively and this repo's installer simply skips what is already there
-(the patcher is idempotent). Until then, the staged-note channel is the bridge.
+The per-entry queue freeze rides the desktop renderer seam, and the **whole
+pipeline lives here**: anchored ops in `desktop-patch/` (generated from a
+verified diff, round-trip proven byte-for-byte), a transactional patcher
+(`patch_desktop.py`), and a build-and-swap step (`install/build-desktop-seam.ps1`
++ `install/desktop-swap.ps1`) that patches the checkout, rebuilds the app with
+its own toolchain, verifies the staged build (the `fromQueue` marker), and swaps
+it in. `install.ps1` runs it by default; the 6 h guardian heals both the sources
+and the app after Hermes updates.
+
+The same seam is also proposed upstream as
+[PR #108242](https://github.com/NousResearch/hermes-agent/pull/108242), so stock
+builds may get it natively some day. Nothing here depends on that merge.
 
 ## Credits
 

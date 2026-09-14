@@ -45,9 +45,15 @@ Read this before promising anything to a user.
 - The plugin itself lives outside the checkout (`desktop-plugins\`) and survives
   updates; the update cronjob keeps it current via the sha-gated copy.
 
+- Updates also rebuild the **desktop app** from the reset checkout: the app
+  loses the queue freeze until the next `install.ps1 -Repair` rebuilds it (the
+  6 h guardian does this automatically; `build-desktop-seam.ps1 -Force`
+  rebuilds on demand).
 ## Known non-goals (v1)
 
-- No macOS/Linux installer, no auto-update without the cronjob, no desktop-side
-  (TS) patching — that seam requires rebuilding the app and is exactly what the
-  upstream PR carries.
+- No macOS/Linux installer, no auto-update without the cronjob. The desktop
+  seam IS shipped (patcher + app rebuild + staged swap), but the rebuild needs
+  the renderer toolchain: node + npm on PATH, the checkout's `node_modules`,
+  and a few minutes of build time. Without that toolchain the installer skips
+  the seam itself and the staged-note channel covers stock builds.
 - No telemetry. Nothing phones home, ever.
