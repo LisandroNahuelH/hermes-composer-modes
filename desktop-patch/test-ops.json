@@ -49,8 +49,8 @@
       "new": "import { useEffect, useRef } from 'react'\nimport { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'\n\nimport type { ComposerModeFrame } from '@/app/chat/composer/contrib'\nimport { usePromptActions } from '@/app/session/hooks/use-prompt-actions'\nimport type { ClientSessionState } from '@/app/types'\nimport { chatMessageText } from '@/lib/chat-messages'\n"
     },
     {
-      "old": "const SID = 'steer-order-session'\n\nlet handleEvent: ((event: RpcEvent) => void) | null = null\nlet redirect: ((text: string) => Promise<boolean>) | null = null\nlet states: Map<string, ClientSessionState>\n\n/** The gateway accepts every redirect — these suites pin CLIENT ordering. */\n",
-      "new": "const SID = 'steer-order-session'\n\nlet handleEvent: ((event: RpcEvent) => void) | null = null\nlet redirect: ((text: string, opts?: ComposerModeFrame) => Promise<boolean | 'canceled'>) | null = null\nlet states: Map<string, ClientSessionState>\n\n/** The gateway accepts every redirect — these suites pin CLIENT ordering. */\n"
+      "old": "const SID = 'steer-order-session'\n\nlet handleEvent: ((event: GatewayEvent) => void) | null = null\nlet redirect: ((text: string) => Promise<boolean>) | null = null\nlet states: Map<string, ClientSessionState>\n\n/** The gateway accepts every redirect — these suites pin CLIENT ordering. */\n",
+      "new": "const SID = 'steer-order-session'\n\nlet handleEvent: ((event: GatewayEvent) => void) | null = null\nlet redirect: ((text: string, opts?: ComposerModeFrame) => Promise<boolean | 'canceled'>) | null = null\nlet states: Map<string, ClientSessionState>\n\n/** The gateway accepts every redirect — these suites pin CLIENT ordering. */\n"
     }
   ],
   "apps/desktop/src/store/composer-queue.test.ts": [
