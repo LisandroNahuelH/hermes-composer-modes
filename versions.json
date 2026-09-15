@@ -1,8 +1,8 @@
 {
-  "version": "12.3.1",
+  "version": "12.3.2",
   "plugin_sha256": "f7129df88f6edacc0fd48cf4bedc1365d57a0c1c7f76097f1d8409f0e1ab73c8",
-  "core_patch_id": "repo-2026-09-12-V5",
-  "desktop_patch_id": "repo-2026-09-12-D1",
+  "core_patch_id": "repo-2026-09-15-V6",
+  "desktop_patch_id": "repo-2026-09-15-D2",
   "min_hermes": "0.20.0",
-  "updated_at": "2026-09-14"
+  "updated_at": "2026-09-15"
 }

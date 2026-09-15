@@ -1,5 +1,24 @@
 # Changelog
 
+## 12.3.2 — 2026-09-15
+
+- **core-patch**: forward-port the drifted `tui_gateway/AGENTS.md` anchor to upstream
+  `afe06f21f4` (2026-09-13) — the base grew a "New event" paragraph between the RPC note
+  and `## Key surfaces`; the seam's per-turn-note section now documents the `note` param
+  after it. Gates: `patch.py --verify-only` 20/20 anchors, `verify_core.py` VERIFIED,
+  import-gate green.
+- **desktop-patch**: forward-port four drifted anchors — the `session-tile-actions.ts` and
+  `use-prompt-actions/index.ts` import blocks (upstream added `SLASH_COMMAND_RE`,
+  `JsonRpcGatewayError`, moved `stripAnsi`, added `ChatMessage`) and the
+  `steer-arrival-order.test.tsx` harness (`RpcEvent` → `GatewayEvent`) — plus a full
+  refresh of the shipped seam tree to the new base. `gen_ops.py` regenerates all ops
+  (32 source + 13 test) with the round-trip proven against the checkout
+  (`apply(base) == seam`, byte for byte). Seam gates: `patch_desktop.py --verify-only`
+  clean on both sets, the four contract suites green (79/79, vitest).
+- **rebuild**: the seam app builds from the patched sources (renderer entry chunk
+  changes; the rest of the bundle is byte-identical to stock) and the packaged
+  `win-unpacked` swap carries it.
+
 ## 12.3.1 - 2026-09-14
 
 - **plugin (v12.3)**: composer mode button UI - the version tag to its right is
