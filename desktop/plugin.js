@@ -1,5 +1,5 @@
 /**
- * composer-modes — Cursor-style mode selector for the Hermes composer. v12.3.
+ * composer-modes — Cursor-style mode selector for the Hermes composer. v13.1.
  *
  * Botón único de modos en la tira del composer (ask/agent/plan/debug). Un ComposerMiddleware
  * adjunta el FRAME del modo al draft (v12.0: `mode` + `note` como DATO, sin RPC): el shell manda
@@ -110,6 +110,12 @@
  *   → api_content. Desaparecen `draft.note` y `session.note.stage`: nada depende de un core
  *   parcheado ni de un renderer reconstruido. El texto tipeado JAMÁS se toca; `ask` además se
  *   refuerza del lado de las herramientas (`pre_tool_call` → solo lectura real).
+ * v13.1 (2026-09-16, bucle de debug en vivo): el stage usaba `host.state.focusedSessionId`
+ *   = el id de TILE runtime (`$focusedRuntimeId`), que NO es el `agent.session_id` con el que
+ *   el core dispara `pre_llm_call` → el store nunca matcheaba y la nota no llegaba a ningún
+ *   turno (silenciosamente: `agent` y "sin nota" se ven iguales desde el modelo). Ahora un
+ *   único helper (`backendSid`) resuelve `focusedStoredSessionId` primero, con fallback al id
+ *   runtime para shells viejos. Probado en vivo: ask/debug/plan entregan su nota y agent no.
  *
  * Reload: ⌘K → "Reload desktop plugins" (fs-watch solo llega a la ventana
  *   principal; una ventana secundaria necesita reload manual o reapertura).
@@ -132,10 +138,27 @@ import { jsx, jsxs } from 'react/jsx-runtime'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
 const ID = 'composer-modes'
-const VER = 'v13.0'
+const VER = 'v13.1'
 const BOOT = Date.now().toString(36).slice(-4)
 
 /** Sonda → desktop.log vía console.error (único nivel capturado). */
+/** v13.1: el id que el core conoce es el *stored* (backend). El id de tile runtime no
+ *  matchea `agent.session_id`, así que la nota del modo no llegaba a ningún turno. */
+function backendSid() {
+  try {
+    const stored = host.state.focusedStoredSessionId
+    const value = stored && typeof stored.get === 'function' ? stored.get() : stored
+    if (value) return String(value)
+  } catch (_) {
+    /* sin stored id: se cae al runtime */
+  }
+  try {
+    return host.state.focusedSessionId.get() || host.state.activeSessionId.get() || null
+  } catch (_) {
+    return null
+  }
+}
+
 /**
  * v13: el backend necesita saber el modo ANTES de admitir el turno. `ctx.rest` está scopeado a
  * `/api/plugins/composer-modes` — nunca sale de este plugin. Best-effort: si el backend está
@@ -146,7 +169,7 @@ async function stageMode(ctx, mode, sidOverride) {
     probe('stage skip (no ctx.rest) mode=' + mode)
     return false
   }
-  const sid = sidOverride || host.state.focusedSessionId.get() || host.state.activeSessionId.get() || null
+  const sid = sidOverride || backendSid()
   if (!sid) {
     probe('stage skip (no session) mode=' + mode)
     return false
@@ -685,7 +708,7 @@ export default {
     )
     try {
       probe(
-        `caps sid=${String(host.state.focusedSessionId.get())} req=${typeof host.request} evt=${typeof host.onEvent} dispose=${typeof ctx.onDispose}`
+        `caps sid=${String(host.state.focusedSessionId.get())} backend=${String(backendSid())} req=${typeof host.request} evt=${typeof host.onEvent} dispose=${typeof ctx.onDispose}`
       )
     } catch (e) {
       probe(`caps err ${String(e)}`)
@@ -1486,8 +1509,8 @@ export default {
         lastSid.current = sid
         if (prevSid === null && sid !== null) return
         if (activeMode.get() !== 'agent') {
-          applyMode(ctx, 'agent', sid)
-          probe(`session change reset sid=${String(sid)}`)
+          applyMode(ctx, 'agent', backendSid())
+          probe(`session change reset sid=${String(sid)} backend=${String(backendSid())}`)
         }
       }, [sid])
 

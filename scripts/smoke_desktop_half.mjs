@@ -41,7 +41,11 @@ export const useValue = (a) => a.get()
 export const cn = (...xs) => xs.filter(Boolean).join(' ')
 export const haptic = () => {}
 export const host = {
-  state: { focusedSessionId: atom('sess-smoke'), activeSessionId: atom('sess-smoke') },
+  state: {
+    focusedSessionId: atom('sess-runtime'),
+    focusedStoredSessionId: atom('sess-stored'),
+    activeSessionId: atom('sess-runtime')
+  },
   request: async () => ({}),
   onEvent: () => () => {},
   notify: () => {},
@@ -110,6 +114,12 @@ if (!plugin || plugin.id !== 'composer-modes' || typeof plugin.register !== 'fun
 }
 ok(`default export: id=${plugin.id}`)
 
+// Same module instance the plugin imported (Node caches by resolved URL), so the
+// stub's `host.state` atoms can be driven from here.
+const sdk = await import(
+  pathToFileURL(path.join(root, 'node_modules', '@hermes', 'plugin-sdk', 'index.mjs')).href
+)
+
 const contributions = []
 const disposers = []
 const stages = []
@@ -164,9 +174,23 @@ if (!middleware?.data?.handler) {
     if (stage.opts?.method !== 'POST') fail(`staged with the wrong method: ${stage.opts?.method}`)
     const body = stage.opts?.body || {}
     if (body.mode !== 'agent') fail(`staged the wrong mode: ${JSON.stringify(body)}`)
-    if (body.session_id !== 'sess-smoke') fail(`staged the wrong session: ${JSON.stringify(body)}`)
+    // Regression (v13.1): the backend keys the mode by the session id the CORE knows
+    // (`agent.session_id`). The runtime tile id never matches it, so the note never
+    // reached a turn — the stage must carry the STORED id, not the focused runtime one.
+    if (body.session_id !== 'sess-stored') {
+      fail(`staged ${JSON.stringify(body.session_id)} — must stage the stored session id`)
+    }
     ok(`middleware staged ${JSON.stringify(body)} and returned the draft untouched`)
   }
+
+  // The stored id is the one that matters, but a shell without it must still stage.
+  stages.length = 0
+  sdk.host.state.focusedStoredSessionId.set(null)
+  await middleware.data.handler({ text: 'no stored id', attachments: [] })
+  sdk.host.state.focusedStoredSessionId.set('sess-stored')
+  if (stages[0]?.opts?.body?.session_id !== 'sess-runtime') {
+    fail(`without a stored id the stage must fall back to the runtime id: ${JSON.stringify(stages[0]?.opts?.body)}`)
+  } else ok('stage falls back to the runtime id when no stored id exists')
 
   const slash = { text: '/plan ship it', attachments: [] }
   stages.length = 0
