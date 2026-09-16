@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.0.1 — 2026-09-16
+
+**The mode note now reaches the turn — the stage targets the session id the core uses.**
+
+- **fix (desktop half)**: the composer middleware staged the mode against
+  `host.state.focusedSessionId`, the runtime *tile* id (`$focusedRuntimeId`). The core fires
+  `pre_llm_call` with the stored session id (`agent.session_id`), so the store lookup never
+  matched, `get_mode()` answered with the default (`agent`) and no note was ever delivered —
+  silently, because from inside a turn "Agent" and "a lost note" look identical. One helper
+  (`backendSid()`) now resolves `focusedStoredSessionId` first and falls back to the runtime id
+  for shells that do not expose it; the session-change reset stages through the same helper.
+- **observability**: the boot `caps` probe prints both ids, so a wrong staging identity is
+  visible in `logs/desktop.log` instead of invisible.
+- **test**: `scripts/smoke_desktop_half.mjs` asserts the staged `session_id` (red before the fix:
+  `staged "sess-runtime" — must stage the stored session id`) and the runtime fallback.
+- **verified live** (Hermes 0.21.3): with the fix, `ask`, `plan` and `debug` each frame their
+  turn and `agent` stays unframed; `verify_note.py` reports `hidden ok: True` with the typed
+  bytes untouched.
+
 ## 2.0.0 — 2026-09-16
 
 **The plugin is now a real Hermes plugin package — no core patch, no renderer rebuild.**

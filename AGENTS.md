@@ -57,7 +57,7 @@ hermes plugins enable composer-modes
 H="$LOCALAPPDATA/hermes"
 
 # 3a. agent half loaded — the plugin logs one line per register
-grep -aF 'composer-modes]' "$H/logs/desktop.log" | tail -3      # ... register ver=v2.0.0 ...
+grep -aF 'composer-modes]' "$H/logs/desktop.log" | tail -3      # ... register ver=v2.0.1 ...
 
 # 3b. backend routes mounted (same process as the chat)
 grep -aF 'Mounted plugin API routes: /api/plugins/composer-modes/' "$H/logs/"*.log | tail -2

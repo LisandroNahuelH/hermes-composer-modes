@@ -28,7 +28,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 PLUGIN_NAME = "composer-modes"
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 STORE_MODULE = "composer_modes_store"
 _PLUGIN_DIR = Path(__file__).resolve().parent.parent
 

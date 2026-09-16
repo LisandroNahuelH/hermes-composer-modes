@@ -7,7 +7,7 @@
 Four composer modes, one keystroke each. The mode's operating note reaches the
 model, never your bubble, your transcript, or your session titles.
 
-`MIT` · `macOS / Linux / Windows` · `Plugin v2.0.0` · `Hermes >= 0.21.3`
+`MIT` · `macOS / Linux / Windows` · `Plugin v2.0.1` · `Hermes >= 0.21.3`
 
 </div>
 

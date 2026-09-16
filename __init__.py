@@ -27,7 +27,7 @@ from .store import load_store
 __all__ = ["register"]
 
 PLUGIN_NAME = "composer-modes"
-VERSION = "2.0.0"
+VERSION = "2.0.1"
 _SKILL_PATH = Path(__file__).parent / "skills" / "composer-modes" / "SKILL.md"
 
 
