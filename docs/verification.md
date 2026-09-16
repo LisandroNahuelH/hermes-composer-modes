@@ -43,18 +43,7 @@ app (⌘K → *Reload desktop plugins*).
 **a. The note is hidden.** Send one message with a non-agent mode on, then read the row:
 
 ```bash
-python - <<'PY'
-import sqlite3, os
-db = os.path.join(os.environ["LOCALAPPDATA"], "hermes", "state.db")
-con = sqlite3.connect(db)
-content, api = con.execute(
-    "SELECT content, api_content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 1"
-).fetchone()
-note = api[len(content):]
-print("typed      :", content[:100])
-print("model-only :", note[:120].replace("\n", " "))
-print("hidden ok  :", len(api) > len(content) and note.strip() != "")
-PY
+python scripts/verify_note.py "$H/state.db"
 ```
 
 Expected: `content` is exactly what was typed (no note, no prefix), `api_content` is

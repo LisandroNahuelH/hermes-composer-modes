@@ -6,7 +6,8 @@
 
 - **packaging**: the repository root IS the plugin (`plugin.yaml`, `__init__.py`,
   `modes.py`, `store.py`, `enforce.py`, `dashboard/`, `desktop/`, `skills/`). The v1
-  patch pipeline moved to `legacy/` and is superseded.
+  patch pipeline is retired from the tree (history: commit `3d5042e`), so the shipped
+  plugin contains no core patch, no installer and nothing that replaces its own files.
 - **delivery v13**: the mode travels through supported seams only. The desktop half
   stages the mode with `ctx.rest POST /api/plugins/composer-modes/mode` (awaited inside
   the composer middleware, so the backend knows the mode before the turn is admitted) and

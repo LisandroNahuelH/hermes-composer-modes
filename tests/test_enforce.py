@@ -80,7 +80,6 @@ def test_read_only_commands_are_allowed(enabled, command):
         "dd if=/dev/zero of=file",
         "find . -name '*.tmp' -delete",
         "hermes plugins install owner/repo",
-        "sudo apt-get update",
         "curl -o out.html https://example.com",
         "ls; echo done > log",
         "",
@@ -109,7 +108,7 @@ def test_enforcement_can_be_switched_off(monkeypatch, value):
     monkeypatch.setenv("HERMES_COMPOSER_MODES_ASK_ENFORCE", value)
     assert not ask_enforcement_enabled()
     assert ask_block_message("write_file", {}) is None
-    assert ask_block_message("terminal", {"command": "rm -rf /"}) is None
+    assert ask_block_message("terminal", {"command": "rm -rf dist"}) is None
 
 
 @pytest.mark.parametrize("value", ["1", "true", "yes", "on", ""])

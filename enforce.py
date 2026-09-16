@@ -51,7 +51,7 @@ _MUTATING_NAME_RE = re.compile(
 _READ_ONLY_COMMAND_RE = re.compile(
     r"^\s*(?:"
     r"cat|bat|head|tail|less|more|wc|ls|dir|tree|stat|file|du|df|md5sum|sha1sum|sha256sum|"
-    r"cksum|pwd|date|whoami|hostname|uname|id|env|printenv|echo|printf|which|type|command -v|"
+    r"cksum|pwd|date|whoami|hostname|uname|id|echo|printf|which|type|command -v|"
     r"find|fd|grep|rg|ag|ack|sed\s+-n|awk|sort|uniq|cut|tr|join|paste|nl|column|jq|yq|xmllint|"
     r"diff|cmp|comm|basename|dirname|realpath|readlink|seq|expr|bc|test|\[|true|false|"
     r"git\s+(?:status|log|show|diff|branch|remote|rev-parse|describe|blame|ls-files|ls-tree|"
@@ -67,7 +67,7 @@ _READ_ONLY_COMMAND_RE = re.compile(
     r"docker\s+(?:ps|images|inspect|logs|version|info)|"
     r"kubectl\s+(?:get|describe|logs|version|config\s+view)|"
     r"systemctl\s+(?:status|list-units|is-active)|"
-    r"open|code|explorer|start\s+\"\""
+    r"open|code|explorer|start\s+\"\"|env"
     r")\b"
 )
 

@@ -97,7 +97,8 @@ with `HERMES_COMPOSER_MODES_ASK_ENFORCE=0` in the Hermes process environment.
 
 * **The note is append-only.** Hermes injects hook context after the user message, so a
   mode note rides the end of the turn. (The v1 patch could sandwich it before *and*
-  after; that seam belongs upstream — see `legacy/`.)
+  after; that seam belongs upstream. The whole v1 pipeline — core patch, renderer seam,
+  installers — is retired from the tree and recoverable from history at commit `3d5042e`.)
 * **Queued sends follow the mode at drain time.** The composer's middleware chain runs
   when a queued message actually goes out, so switching modes while a message waits
   changes the mode it travels with.
@@ -131,9 +132,9 @@ enforce.py      the ask-mode policy gate (deny-list + terminal classifier)
 dashboard/      plugin_api.py — the REST namespace the desktop half talks to
 desktop/        plugin.js — mode button, plan card, plan reader pane, debug loop card
 skills/         the mode protocol as a loadable skill
+scripts/        verify_note.py — read the hidden note back out of state.db
 tests/          pytest suite (104 tests)
 docs/           architecture, limits, verification
-legacy/         the v1 patch pipeline (superseded — reference only)
 ```
 
 Run the tests with `python -m pytest -c tests/pytest.ini`. The pytest config lives in

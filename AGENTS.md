@@ -4,10 +4,10 @@ You are an agent working on **Composer Modes for Hermes Agent**: a *unified plug
 package* (agent half in Python + desktop half in plain-JS ESM) for the Hermes desktop
 composer. This file is the runbook: layout, install, verification, failure protocol.
 
-**No core patch, no renderer rebuild.** If you are looking for the v1 patch pipeline
-(`core-patch/`, `desktop-patch/`, `install/`), it lives in `legacy/` and is superseded —
-read `legacy/README.md` before touching it, and never run that installer on a machine
-that has the v13+ package installed.
+**No core patch, no renderer rebuild.** The v1 pipeline that used to patch Hermes itself
+(core patch, renderer seam, installers, guardian task) is retired: it is gone from the
+tree and recoverable from history at commit `3d5042e` (`git show 3d5042e:install/install.ps1`).
+Never reintroduce a core patch here — the package ships without them by design.
 
 ## 0. Preflight
 
@@ -32,9 +32,9 @@ enforce.py        ask-mode policy gate (tool deny-list + terminal classifier)
 dashboard/        manifest.json + plugin_api.py → /api/plugins/composer-modes/
 desktop/plugin.js the desktop half (mode button, cards, plan reader pane)
 skills/composer-modes/SKILL.md  the protocol, loadable as composer-modes:modes
+scripts/verify_note.py          read the hidden note back out of state.db
 tests/            pytest suite (config in tests/pytest.ini — rootdir on purpose)
 docs/             architecture.md, limits.md, verification.md
-legacy/           the v1 patch pipeline (superseded, reference only)
 ```
 
 ## 2. Install (the whole thing)
@@ -67,15 +67,8 @@ ls "$H/desktop-plugins/composer-modes/"                          # plugin.js + .
 grep -aF '[cm-pa]' "$H/logs/desktop.log" | tail -5               # register v13 + probes
 
 # 3d. hidden note, end to end (conclusive): send one message in a non-agent mode, then
-python - <<'PY'
-import sqlite3, os
-db = os.path.join(os.environ["LOCALAPPDATA"], "hermes", "state.db")
-c = sqlite3.connect(db)
-row = c.execute("SELECT content, api_content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 1").fetchone()
-print("content == typed bytes:", row[0][:80])
-print("api_content longer by:", len(row[1]) - len(row[0]))
-PY
-# api_content must contain the mode note; content must NOT.
+python scripts/verify_note.py "$H/state.db"
+#    typed bytes stay yours; the model-only tail is the mode note.
 
 # 3e. ask enforcement: ask for a file change in ask mode → the turn reports a
 #     [composer-modes] block, and the file is untouched.
@@ -114,4 +107,3 @@ Report the real values — never paste a checklist you did not run.
   model-facing bytes (`api_content`), never the bubble or the transcript.
 * Do not let a hook or the desktop half raise into the host: hooks return `None` on
   failure, the middleware returns the draft unchanged.
-* Do not run `legacy/install/install.ps1` on a machine that has this package installed.
