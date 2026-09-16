@@ -681,7 +681,7 @@ export default {
       /* una purga nunca debe romper el register */
     }
     probe(
-      `register ver=${VER} boot=${BOOT} plannotes=${PLAN_NOTES.length} hash=${String((typeof location !== 'undefined' && location.hash) || '').slice(0, 24)}`
+      `register ver=${VER} boot=${BOOT} notelocal=backend hash=${String((typeof location !== 'undefined' && location.hash) || '').slice(0, 24)}`
     )
     try {
       probe(

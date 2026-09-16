@@ -27,6 +27,9 @@ jobs:
       - name: Desktop half parses
         run: node --check desktop/plugin.js
 
+      - name: Desktop half smoke test (loads, wires, stages)
+        run: node scripts/smoke_desktop_half.mjs
+
       - name: Manifest sanity
         run: |
           python - <<'PY'

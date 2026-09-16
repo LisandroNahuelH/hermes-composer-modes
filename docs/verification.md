@@ -7,7 +7,8 @@ only a live turn proves. Run them in that order and report real output.
 
 ```bash
 node --check desktop/plugin.js            # the desktop half parses as plain ESM
-python -m pytest -c tests/pytest.ini      # 104 tests: modes, store, enforcement, wiring, API
+node scripts/smoke_desktop_half.mjs       # loads it with SDK stubs: wires + stages, never rewrites
+python -m pytest -c tests/pytest.ini      # 103 tests: modes, store, enforcement, wiring, API
 hermes plugins validate .                 # manifest + capability probe against register()
 ```
 

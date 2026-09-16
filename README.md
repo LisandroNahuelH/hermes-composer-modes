@@ -132,8 +132,8 @@ enforce.py      the ask-mode policy gate (deny-list + terminal classifier)
 dashboard/      plugin_api.py — the REST namespace the desktop half talks to
 desktop/        plugin.js — mode button, plan card, plan reader pane, debug loop card
 skills/         the mode protocol as a loadable skill
-scripts/        verify_note.py — read the hidden note back out of state.db
-tests/          pytest suite (104 tests)
+scripts/        verify_note.py + smoke_desktop_half.mjs (repository gates)
+tests/          pytest suite (103 tests)
 docs/           architecture, limits, verification
 ```
 

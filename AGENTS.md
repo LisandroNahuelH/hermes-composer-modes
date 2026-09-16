@@ -91,7 +91,7 @@ Report the real values — never paste a checklist you did not run.
 ## 5. Changing the code
 
 * One rule per change; keep `modes.py` the only place a mode's words live.
-* After any change: `node --check desktop/plugin.js` (if touched),
+* After any change: `node --check desktop/plugin.js` + `node scripts/smoke_desktop_half.mjs` (if touched),
   `python -m pytest -c tests/pytest.ini`, `hermes plugins validate .`.
 * Bump `VERSION` in `__init__.py`, `dashboard/plugin_api.py`, `plugin.yaml`,
   `dashboard/manifest.json` and `desktop/plugin.js`'s `VER` together.
