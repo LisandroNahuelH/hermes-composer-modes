@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-composer-modes"
+version = "2.0.0"
+description = "Composer Modes — a mode selector for the Hermes desktop composer (ask / agent / plan / debug)."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "LisandroNahuelH" }]
+keywords = ["hermes", "hermes-agent", "plugin", "composer", "modes"]
+
+[tool.setuptools]
+py-modules = ["modes", "store", "enforce"]
+
+# Note: pytest config lives in tests/pytest.ini. The plugin package needs an
+# __init__.py at the repository root, and pytest >= 8 turns a parent directory
+# that has one into a Package node it then fails to import (the folder name
+# carries a dash). Pointing rootdir at tests/ keeps the root out of the chain:
+#     python -m pytest -c tests/pytest.ini

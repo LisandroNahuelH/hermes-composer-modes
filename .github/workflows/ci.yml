@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test deps
+        run: python -m pip install --disable-pip-version-check pytest fastapi
+
+      - name: Python tests
+        run: python -m pytest -c tests/pytest.ini
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Desktop half parses
+        run: node --check desktop/plugin.js
+
+      - name: Manifest sanity
+        run: |
+          python - <<'PY'
+          import json, pathlib, re, sys
+          root = pathlib.Path(".")
+          manifest = (root / "plugin.yaml").read_text(encoding="utf-8")
+          for key in ("name: composer-modes", "requires_hermes"):
+              assert key in manifest, f"missing {key} in plugin.yaml"
+          data = json.loads((root / "dashboard" / "manifest.json").read_text(encoding="utf-8"))
+          assert data["api"] == "plugin_api.py"
+          api = (root / "dashboard" / "plugin_api.py").read_text(encoding="utf-8")
+          assert "router = APIRouter()" in api
+          for rel in ("desktop/plugin.js", "skills/composer-modes/SKILL.md"):
+              assert (root / rel).is_file(), rel
+          print("manifest sanity ok")
+          PY

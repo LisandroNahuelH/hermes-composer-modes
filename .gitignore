@@ -6,6 +6,7 @@ Thumbs.db
 desktop.ini
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # local install artifacts (never commit)
 composer-modes-patch-manifest.json
@@ -18,3 +19,6 @@ venv/
 # editor
 .vscode/
 .idea/
+
+# local backups (work-order step 1) — kept on disk, never published
+Backups/
