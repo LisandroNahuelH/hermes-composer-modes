@@ -48,7 +48,9 @@ python scripts/verify_note.py "$H/state.db"
 ```
 
 Expected: `content` is exactly what was typed (no note, no prefix), `api_content` is
-longer by the note (and its framing separators).
+longer by the note (and its framing separators). `hidden ok: True` is the pass condition: a
+mode whose note never arrives is indistinguishable from Agent inside the turn, so this read-back
+is the only honest proof the plugin worked.
 
 **b. Ask mode blocks a mutation.** In ask mode, ask for a file change. Expected: the
 agent reports a `[composer-modes] Ask mode is read-only …` block and the file is
@@ -67,8 +69,8 @@ grep -aF '[cm-pa]' "$H/logs/desktop.log" | tail -20
 
 | Probe | Means |
 |---|---|
-| `register ver=v13.0 …` | the desktop half loaded (version + window) |
-| `stage ok mode=ask sid=…` | the backend accepted the mode for that session |
+| `register ver=v13.1 …` | the desktop half loaded (version + window) |
+| `stage ok mode=ask sid=…` | the backend accepted the mode for that session. The `sid` must be the session id the core uses (`YYYYMMDD_HHMMSS_xxxxxx`), never a short runtime tile id — a runtime id here is the one failure that looks like success |
 | `stage FAIL …` | backend unreachable — the send still went out unchanged |
 | `mw v13 mode=…` | the middleware ran for a submit |
 | `auto-reset …->agent` | the plan/debug card landed and the mode returned to Agent |

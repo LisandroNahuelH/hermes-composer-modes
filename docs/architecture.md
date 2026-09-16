@@ -28,7 +28,7 @@ FastAPI router. Nothing outside the package is modified.
 | Need | Seam used | Why it is the right one |
 |---|---|---|
 | A per-turn model instruction that the user must not see | `pre_llm_call` returning `{"context": …}` | Hermes composes the current user message's `api_content` from it and replays those exact bytes later, so the durable row, the bubble and the auto-title stay pristine (`agent/turn_context.py`, `compose_user_api_content`). |
-| The backend must know the mode before the turn is admitted | `ctx.rest` POST awaited inside the composer middleware | The middleware chain is `await`ed before `onSubmitProp`, so the stage lands before `prompt.submit`. No race, no RPC of our own. |
+| The backend must know the mode before the turn is admitted | `ctx.rest` POST awaited inside the composer middleware, keyed by the **stored** session id | The middleware chain is `await`ed before `onSubmitProp`, so the stage lands before `prompt.submit`. No race, no RPC of our own. |
 | The desktop half must reach plugin code | `dashboard/plugin_api.py` → `/api/plugins/<id>/` | The sanctioned namespace: mounted only for enabled user/bundled plugins, reachable from the renderer as `ctx.rest` (namespace-scoped by construction). |
 | Ask mode must actually be read-only | `pre_tool_call` returning a block directive | Hermes runs it before approvals and execution; the first valid block wins, and a timed-out callback fails closed. |
 | A mode change from any surface | `ctx.register_command('mode', …)` | Plugin commands are dispatchable from the CLI, the TUI, the desktop composer and messaging platforms. |
@@ -69,7 +69,11 @@ dropped on the next write.
 * `composer.actions` — the mode button (cycle on click, `Shift+Tab` via a capture-phase
   window listener; shift-only chords cannot be bound through `KEYBINDS_AREA` because the
   composer is an editable target).
-* `composer.middleware` — stage the mode, never rewrite the text.
+* `composer.middleware` — stage the mode, never rewrite the text. The staged identity
+  comes from one helper (`backendSid()`): `host.state.focusedStoredSessionId` — the id the
+  core fires `pre_llm_call` with (`agent.session_id`) — first, then the runtime tile id as a
+  fallback for shells that do not expose the stored one. Staging a runtime-only id makes the
+  store lookup miss, so the default mode answers and the note is silently lost.
 * `transcript.directives` (`plan-approve`, `plan-questions`, `debug-loop`) — the cards
   that close each loop, with localStorage-mirrored state keyed by a normalized message id
   plus the artifact path, inline panels instead of portal dialogs, and per-button marks.
