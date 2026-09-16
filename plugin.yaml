@@ -9,7 +9,6 @@ description: >-
 author: LisandroNahuelH
 license: MIT
 homepage: https://github.com/LisandroNahuelH/hermes-composer-modes
-manifest_version: 2
 requires_hermes: ">=0.21.3"
 platforms: [windows, macos, linux]
 kind: standalone
