@@ -1,122 +1,79 @@
-# Architecture — how a mode reaches the model, and nothing else
+# Architecture
 
-## The problem
-
-A “mode” (Ask / Plan / Debug) is an operating instruction for the turn. Naively you
-append it to the message text — and it pollutes everything that reads the message:
-the bubble, the durable transcript, sidebar previews, session auto-titles, logs.
-Composer Modes exists to carry that instruction **out of band**.
-
-## The channel
+Composer Modes is a **unified Hermes plugin package**: one installable folder that
+carries an agent half (Python) and a desktop half (plain-JS ESM), glued by a small
+FastAPI router. Nothing outside the package is modified.
 
 ```
-┌──────────┐   cycle (Shift+Tab / click)   ┌──────────────────────────────┐
-│ composer │ ────────────────────────────▶ │ plugin: mode + note derived   │
-└──────────┘                               └──────────────┬───────────────┘
-                                                          │
-              ┌───────────────────────────────────────────┴────────────────┐
-              │ builds with the desktop seam (this repo): note rides the  │
-              │ frame  {text, attachments, mode, note, fromQueue}          │
-              │ stock builds: session.note.stage (one-shot, TTL 30 s)      │
-              └───────────────────────────┬────────────────────────────────┘
-                                          ▼
-                                prompt.submit { ..., note }
-                                          │
-                    gateway: note = explicit or staged  (cap 8 KiB)
-                                          │
-                     ┌────────────────────┴─────────────────────┐
-                     │ durable row / transcript: content         │  ← you, untouched
-                     │ model-facing payload:     api_content     │  ← note merged here only
-                     └──────────────────────────────────────────┘
+┌───────────────────────── Hermes desktop (Electron) ──────────────────────────┐
+│  composer ── mode button / Shift+Tab ─▶ atom + ctx.storage                   │
+│      │                                                                        │
+│      │  ComposerMiddleware (composer.middleware)                              │
+│      │    await ctx.rest('/mode', {POST})   ← mode staged BEFORE the send     │
+│      ▼                                                                        │
+│  desktop/plugin.js  (cards, plan reader pane, probes)                        │
+└──────────────────────────────┬────────────────────────────────────────────────┘
+                               │ prompt.submit / session RPC
+┌──────────────────────────────▼───── Hermes process (serve / gateway) ─────────┐
+│  dashboard/plugin_api.py     /api/plugins/composer-modes/…  ⇄ store.py        │
+│  __init__.py                                                                  │
+│    pre_llm_call   → {"context": note}   → api_content (model-only bytes)      │
+│    pre_tool_call  → {"action": "block"} in ask mode                           │
+│    /mode command  → default mode                                              │
+└───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Invariant:** `api_content` is the only field the note ever touches, and the durable
-`content` stays byte-identical to what the user typed. Ask mode is additionally
-**sandwiched** (note prepended to the run message *and* kept in the trailing slot)
-for primacy + recency — `run_message = _prepend_note(run_message, note)`, gated on
-the `[mode:ask]` head.
+## Why these seams
 
-## Size formulas (verification recipe)
+| Need | Seam used | Why it is the right one |
+|---|---|---|
+| A per-turn model instruction that the user must not see | `pre_llm_call` returning `{"context": …}` | Hermes composes the current user message's `api_content` from it and replays those exact bytes later, so the durable row, the bubble and the auto-title stay pristine (`agent/turn_context.py`, `compose_user_api_content`). |
+| The backend must know the mode before the turn is admitted | `ctx.rest` POST awaited inside the composer middleware | The middleware chain is `await`ed before `onSubmitProp`, so the stage lands before `prompt.submit`. No race, no RPC of our own. |
+| The desktop half must reach plugin code | `dashboard/plugin_api.py` → `/api/plugins/<id>/` | The sanctioned namespace: mounted only for enabled user/bundled plugins, reachable from the renderer as `ctx.rest` (namespace-scoped by construction). |
+| Ask mode must actually be read-only | `pre_tool_call` returning a block directive | Hermes runs it before approvals and execution; the first valid block wins, and a timed-out callback fails closed. |
+| A mode change from any surface | `ctx.register_command('mode', …)` | Plugin commands are dispatchable from the CLI, the TUI, the desktop composer and messaging platforms. |
+| The agent must understand the protocol | `ctx.register_skill('modes', …)` | Ships `skills/composer-modes/SKILL.md` as `composer-modes:modes`; explicit loads only. |
 
-| Mode | `api_content` |
-|---|---|
-| agent | `NULL` (no note travels) |
-| plan / debug | `content + 2 + len(note)` |
-| ask | `content + 4 + 2 * len(note)` (sandwich) |
+## State
 
-Check with: `SELECT content, api_content FROM messages ORDER BY id DESC LIMIT 1;`
-(rows live in `state.db` under the Hermes home).
+`store.py` keeps `{default, sessions: {sid: {mode, updated_at}}}` in
+`<hermes home>/plugin-data/composer-modes/state.json` — never inside the install
+directory, which `hermes plugins update` replaces. Both halves load the module through
+`load_store()`, which keys it in `sys.modules` so one process shares one instance, and
+re-reads the file (mtime-checked) when they do not. Sessions untouched for 30 days are
+dropped on the next write.
 
-## The five patched files (the “core seam”)
+## Verified contracts (checked against Hermes 0.21.3, upstream `bb0c2303`)
 
-| File | Seam |
-|---|---|
-| `tui_gateway/methods_prompt.py` | `note` param + cap; `session.note.stage` RPC (TTL 30 s); pop-on-every-submit + re-stage on refused submits; busy path carries the note |
-| `tui_gateway/prompt_turn.py` | `note` threaded into the turn; Ask sandwich |
-| `tui_gateway/session_auto_continue.py` | note carried through the background queue envelope (last note wins) |
-| `agent/turn_context.py` | one-shot consume → merged into `api_content` only; session auto-titles read the pristine override first |
-| `tui_gateway/AGENTS.md` | the documented contract |
+* `pre_llm_call` payload: `session_id, task_id, turn_id, user_message,
+  conversation_history, is_first_turn, model, platform, parent_session_id, sender_id`.
+  A returned string or `{"context": …}` is appended to the current user message's
+  model-facing content; the `messages` list is untouched beyond the `api_content` stamp.
+* `pre_tool_call` payload: `tool_name, args, session_id, task_id, tool_call_id`.
+  Returning `{"action": "block", "message": str}` vetoes the call; the first valid block
+  wins; hooks run on a bounded worker and fail closed.
+* Unified packages: `plugins/<id>/desktop/plugin.js` is copied by the Electron main
+  process into `<hermes home>/desktop-plugins/<id>/` with a `.hermes-package.json`
+  marker; a marker-less folder of the same name is a deliberate standalone install and
+  is never overwritten.
+* `/api/plugins/<id>/` routes are mounted only when the plugin is enabled
+  (`plugins.enabled`) and the source is user/bundled.
+* `hermes plugins validate <dir>` runs the catalog CI checks locally: manifest fields,
+  `requires_hermes`, `requires_env` shape, and a capability probe that imports
+  `register()` and compares it against the declared hooks/tools/middleware.
 
-All edits ship as **exact search/replace pairs in `core-patch/ops.json`** (20 ops),
-generated from a verified diff and replay-tested: applying the ops to the pristine
-base reproduces the shipped tree byte-for-byte. `core-patch/patch.py` enforces
-verify → backup → apply → re-verify → (rollback on failure), and stamps each file
-with `[composer-modes-patch]` for idempotence.
+## The desktop half
 
-## The desktop seam (renderer side, ships in this repo)
+`desktop/plugin.js` (plain ESM, no build step) registers:
 
-The queue freeze lives in the desktop renderer, so the installer cannot patch
-the packaged app: it patches the **sources** and rebuilds. All of it ships
-here — no dependency on any upstream branch.
+* `composer.actions` — the mode button (cycle on click, `Shift+Tab` via a capture-phase
+  window listener; shift-only chords cannot be bound through `KEYBINDS_AREA` because the
+  composer is an editable target).
+* `composer.middleware` — stage the mode, never rewrite the text.
+* `transcript.directives` (`plan-approve`, `plan-questions`, `debug-loop`) — the cards
+  that close each loop, with localStorage-mirrored state keyed by a normalized message id
+  plus the artifact path, inline panels instead of portal dialogs, and per-button marks.
+* Panes — the plan reader (`host.openWorkspace`).
 
-- **Files (14)**: `apps/desktop/src/app/chat/composer/*` (frame plumbing;
-  `queue-frame.ts` is created), `.../chat/index.tsx`,
-  `.../chat/session-tile-actions.ts`,
-  `.../session/hooks/use-background-queue-drain.ts`,
-  `.../session/hooks/use-prompt-actions/*`, `src/store/composer-queue.ts`, plus
-  the `apps/desktop/AGENTS.md` contract note.
-- **Ops**: `desktop-patch/ops.json` — 33 anchored search/replace pairs,
-  generated by `gen_ops.py` from a verified diff (round-trip proven: applying
-  them to the base reproduces the seam byte-for-byte) — applied by
-  `desktop-patch/patch_desktop.py` (verify -> backup -> apply -> re-verify;
-  create ops for new files). The contract tests ship as
-  `desktop-patch/test-ops.json` (optional, `--set tests`); the seam tree is
-  kept under `desktop-patch/seam/` for re-anchoring after upstream drift.
-- **Build + swap**: `install/build-desktop-seam.ps1` runs `npm run build` +
-  `electron-builder --dir` into a staging dir (the live app is never locked),
-  verifies the staged build (Hermes.exe + the `fromQueue` marker in the
-  renderer bundle), stages `win-unpacked.new`, and schedules
-  `install/desktop-swap.ps1` (detached: close app -> move the old build to
-  `state\backups\win-unpacked.pre-seam-*` -> move the new one in -> relaunch).
-- **Idempotence**: a patched + built tree is a fast no-op; after a Hermes
-  update wipes the checkout and rebuilds the stock app, the next
-  `install.ps1 -Repair` (guardian, every 6 h) re-applies everything and
-  rebuilds automatically.
-
-## Plugin map (`plugin/composer-modes/plugin.js`)
-
-- **Modes**: Ask (green) · Agent (neutral) · Plan (blue) · Debug (red); cycle via
-  `Shift+Tab` or the composer button; state persisted in `ctx.storage`.
-- **Middleware** (`composer.middleware`, order 10): derives `{mode, note}` per fresh
-  submit and returns it on the draft; drains (`fromQueue`) pass through untouched;
-  also stages the note best-effort via `session.note.stage` (v11 parity for stock
-  shells) — the same code serves both builds.
-- **Cards**: `::plan-approve` (Implement / Modify / Read plan / Copy path) and
-  `::debug-loop` (rounds, *Mark as fixed* cleanup), plus the `::plan-questions`
-  dialog; plan reader as a right-docked workspace pane.
-- **Probes**: `[cm-pa]` lines in `desktop.log` (`register`, `mw v12 derive`,
-  `mw v12 pass`, `cycle …`) — the runtime evidence trail used by troubleshooting.
-
-## Guardians
-
-```
-install.ps1 ──▶ plugin copy (sha-gated)  ──▶ hot-reloads in the running app
-            ──▶ core patch (transactional) ──▶ verify gate ──▶ detached backend restart
-            ──▶ desktop seam (renderer ops) ──▶ app rebuild (staged) ──▶ detached app swap
-            └─▶ ensure-task.ps1 ──▶ Windows task (logon+30s, every 6h, install.ps1 -Repair)
-                                   ✔ heals after Hermes updates reset the checkout + the app
-cronjob.md ──▶ Hermes cronjob (weekly) ──▶ git pull + install.ps1 -Repair + one-line notice
-```
-
-The installer never kills the backend inline (the installing agent *is* that
-backend): the restart is a one-shot scheduled task with a ~45 s fuse.
+Mode changes funnel through one helper (`applyMode`) so the atom, the storage mirror and
+the backend stage can never drift; session switches reset to Agent for the new session.

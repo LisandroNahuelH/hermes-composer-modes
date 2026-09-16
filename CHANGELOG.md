@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.0.0 — 2026-09-16
+
+**The plugin is now a real Hermes plugin package — no core patch, no renderer rebuild.**
+
+- **packaging**: the repository root IS the plugin (`plugin.yaml`, `__init__.py`,
+  `modes.py`, `store.py`, `enforce.py`, `dashboard/`, `desktop/`, `skills/`). The v1
+  patch pipeline moved to `legacy/` and is superseded.
+- **delivery v13**: the mode travels through supported seams only. The desktop half
+  stages the mode with `ctx.rest POST /api/plugins/composer-modes/mode` (awaited inside
+  the composer middleware, so the backend knows the mode before the turn is admitted) and
+  the agent half returns the note from `pre_llm_call`, which Hermes merges into the
+  turn's model-facing bytes (`api_content`) only. `draft.note` and `session.note.stage`
+  are gone; the typed text is never rewritten.
+- **ask enforcement**: `pre_tool_call` now vetoes state-changing calls in ask mode —
+  a deny-list of tools plus any mutating tool name, and a fail-closed read-only
+  classifier for `terminal`. `HERMES_COMPOSER_MODES_ASK_ENFORCE=0` disables it.
+- **state**: per-session modes in `<hermes home>/plugin-data/composer-modes/state.json`,
+  shared by the hooks, the `/mode` command and the REST half, with a 30-day TTL.
+- **surfaces**: `/mode ask|agent|plan|debug` works from the CLI, the TUI, the desktop
+  composer and messaging platforms; the protocol also ships as a loadable skill
+  (`composer-modes:modes`).
+- **desktop half**: `desktop/plugin.js` (v13.0) keeps the mode button, `Shift+Tab`
+  cycling, the plan approval/questions cards, the plan reader pane and the debug loop
+  card, and routes every mode change through one `applyMode` helper (atom + storage +
+  backend stage).
+- **tests**: `tests/` — 104 pytest cases over modes, store, enforcement, wiring and the
+  REST half; `tests/pytest.ini` pins the rootdir (the package needs a root
+  `__init__.py`, which pytest cannot import as a package parent).
+- **docs**: README/AGENTS/architecture/limits/verification rewritten for the package;
+  catalog metadata added (`requires_hermes >= 0.21.3`, declared hooks).
+
 ## 12.3.2 — 2026-09-15
 
 - **core-patch**: forward-port the drifted `tui_gateway/AGENTS.md` anchor to upstream

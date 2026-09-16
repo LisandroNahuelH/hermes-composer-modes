@@ -7,7 +7,7 @@
 Four composer modes, one keystroke each. The mode's operating note reaches the
 model, never your bubble, your transcript, or your session titles.
 
-`License: MIT` · `Platform: Windows (v1)` · `Version: 12.3.0` · `Plugin + core + desktop seams + installer`
+`MIT` · `macOS / Linux / Windows` · `Plugin v2.0.0` · `Hermes >= 0.21.3`
 
 </div>
 
@@ -15,143 +15,142 @@ model, never your bubble, your transcript, or your session titles.
 
 ## What it is
 
-Composer Modes adds a mode selector to the Hermes desktop composer:
+Composer Modes adds a mode button to the Hermes **desktop** composer:
 
-| Mode | Color | What it does |
-|---|---|---|
-| **Ask** | green | Read-only turn. The agent may read files and inspect, but must not change anything — and always closes with *"Estoy en modo Ask, solo puedo responder…"* when asked for an action. |
-| **Agent** | neutral | Full toolset, the default. No note travels; nothing changes about a normal turn. |
-| **Plan** | blue | Planning only. The agent saves a plan under `.hermes/plans/` and ends with an inline **Plan card** (Implement / Modify / Read plan / Copy path). |
-| **Debug** | red | A guided debugging loop: instrument → numbered reproduction steps → *Mark as fixed* cleans the instrumentation up. |
+| Mode | What it does |
+|---|---|
+| **Ask** | Read-only turn. The agent may read and inspect; it must not change anything, and it closes with a clear sentence telling you to re-ask in Agent mode. State-changing tool calls are **blocked**, not just discouraged. |
+| **Agent** | The default. Full toolset, nothing added. |
+| **Plan** | Planning only. The plan is saved under `.hermes/plans/` and the reply ends with an inline **Plan card** (Implement / Modify / Read plan / Copy path). |
+| **Debug** | A guided loop: instrument → numbered reproduction steps → *still broken?* → fix → *Mark as fixed* cleans the instrumentation up. |
 
-The interface part is the easy half. The hard half is **how the mode reaches the
-model without polluting your conversation** — and that is what this repo ships.
+One package, two halves:
 
-## The idea: a hidden note channel
+```bash
+hermes plugins install composer-modes      # ← the whole thing, no patches
+hermes plugins enable composer-modes
+```
+
+* **agent half** (Python) — `plugin.yaml`, `__init__.py`, `modes.py`, `store.py`, `enforce.py`
+* **desktop half** (plain-JS ESM plugin) — `desktop/plugin.js`, copied by the app itself
+  into `$HERMES_HOME/desktop-plugins/composer-modes/`
+* **backend bridge** — `dashboard/plugin_api.py`, mounted at
+  `/api/plugins/composer-modes/` and reached by the desktop half through `ctx.rest`
+* **skill** — `skills/composer-modes/SKILL.md`, loadable as `composer-modes:modes`
+
+No core patch, no renderer rebuild, no guardian task: everything rides supported
+plugin surfaces of Hermes.
+
+## The hidden-note channel
 
 Every mode attaches a short operating note ("this turn is read-only", "plan rules",
-"debug loop contract") to the turn. Composer Modes delivers that note through a
-**per-turn sidecar channel**: it merges into the model-facing content only
-(`api_content`), one-shot. Your visible message, the durable transcript row, the
-sidebar preview and the auto-title stay exactly what you typed.
+"debug loop contract") to the turn it frames. The note rides Hermes' own per-turn
+sidecar: the agent half returns it from the `pre_llm_call` hook, and Hermes merges it
+into the **model-facing bytes** of the current user message (`api_content`) only.
 
 ```
-composer ── mid-cycle ──▶ plugin (mode + note)
-   │                          │
-   │                          ├─ seam builds (this repo): note rides the submit frame
-   │                          └─ stock builds: session.note.stage (one-shot, TTL 30 s)
-   ▼
-prompt.submit ── note ──▶ gateway ──▶ api_content (model)      content (you, untouched)
+composer ── POST /mode ──▶ agent half (mode store)     ← which session this turn belongs to
+   │                            │
+   ▼                            ▼
+prompt.submit ──▶ turn ──▶ pre_llm_call ──▶ api_content (the model reads the note)
+                                    └──────▶ content (you read your own words)
 ```
 
-## What gets installed
+* What you typed is what your bubble, the transcript, the sidebar preview and the
+  session title show — byte for byte.
+* The note is one-shot: it frames the turn it was staged for and nothing else.
+* Slash commands are never framed — a `/plan …` you type stays exactly that.
 
-| # | Piece | What it is | Where it lands |
-|---|---|---|---|
-| 1 | **Plugin** | `plugin/composer-modes/plugin.js` — the modes, cards, probes | `%LOCALAPPDATA%\hermes\desktop-plugins\composer-modes\` |
-| 2 | **Core seam** | `core-patch/` — a transactional, anchored patch: note param, `session.note.stage`, ask sandwich, pristine titles | your `hermes-agent` checkout (5 files, reversible) |
-| 3 | **Desktop seam** | `desktop-patch/` + `install/build-desktop-seam.ps1` — anchored renderer ops, app rebuild, staged swap (the per-entry queue freeze) | your checkout + the built app |
-| 4 | **Installer** | `install/install.ps1` — preflight, sha256 gate, backup + manifest, verify gate, detached restart | runs from this repo |
+## Ask mode is enforced, not merely requested
 
-Plus two guardians, so it keeps working while you forget it exists:
+While a session is in ask mode the plugin vetoes the tool calls that would change
+something (`pre_tool_call` → `{"action": "block"}`):
 
-| Guardian | Watches | Repairs |
-|---|---|---|
-| **Windows task** `HermesComposerModesEnsure` | Hermes updates that reset the checkout | re-runs the installer (`-Repair`, logon + every 6 h) |
-| **Hermes cronjob** (`install/cronjob.md`) | this repo's releases | pulls the new version, re-runs the installer, sends you one line |
+* a deny-list of state-changing tools (`write_file`, `patch`, `delegate_task`,
+  `memory`, `cronjob_manage`, `process_manage`, …) plus any tool name shaped like a
+  mutation (`*_delete`, `*_create`, `*_upload`, …);
+* `terminal`: every command segment must match a read-only allow-list (`cat`, `ls`,
+  `grep`/`rg`, `git status|log|diff|show`, `wc`, `diff`, version checks, pipes between
+  them) and the command must contain no redirection or mutating token. When in doubt it
+  is blocked — ask mode is read-only by contract.
 
-## Quick start — one prompt
+Nothing here is a sandbox: it is a policy gate for a mode the user chose. Switch it off
+with `HERMES_COMPOSER_MODES_ASK_ENFORCE=0` in the Hermes process environment.
 
-1. Open Hermes (desktop).
-2. Give your agent this repo's link.
-3. Say: **"Install and configure everything in this repo."**
+## Switching modes
 
-Your agent reads [`AGENTS.md`](AGENTS.md) — the runbook written for exactly that —
-installs the three pieces, creates the Windows task, sets the update cronjob, and
-reports a verification checklist. Then you forget about it.
-
-Prefer doing it by hand? [`AGENTS.md`](AGENTS.md) → *Manual path* has the same steps
-as copy-paste commands.
+* **Desktop** — the mode button in the composer, or `Shift+Tab` to cycle through
+  Ask → Agent → Plan → Debug.
+* **Anywhere** — `/mode ask|agent|plan|debug` sets the default mode for sessions that
+  have no mode of their own (CLI, TUI, desktop, messaging platforms).
 
 ## Requirements
 
-- Windows 10/11 (v1 — macOS/Linux: see the stub in `install/install.sh`, do not hand-patch).
-- Hermes Agent with the desktop app, and a `hermes-agent` checkout on disk.
-- Git (the installer reads the checkout; the cronjob pulls updates).
-- An agent with terminal access (the whole point: it does the work).
-
-## Security & trust
-
-You are about to let a repo patch your Hermes. That deserves plain answers:
-
-- **Exactly 5 core files are touched** (listed in [`docs/architecture.md`](docs/architecture.md));
-  everything else is new files under your Hermes home.
-- **Every write is reversible**: per-file backups (`.bak-<stamp>-<rand>`, never
-  overwritten), a `composer-modes-patch-manifest.json` with before/after sha256,
-  and `install/uninstall.ps1` that verifies hashes before restoring.
-- **All-or-nothing**: the patcher verifies every anchor before the first write and
-  re-verifies after the last one; a failure rolls everything back and exits non-zero.
-  It never leaves a half-patched core. Upstream drift ⇒ loud failure, no guessing.
-- **Pinned plugin**: the copy is gated by the sha256 published in `versions.json`.
-- **Audit yourself**:
-
-  ```powershell
-  Get-Content <checkout>\composer-modes-patch-manifest.json   # what changed, hashes, backups
-  git -C <checkout> diff                                       # see every patched line
-  Get-Content $env:LOCALAPPDATA\hermes\composer-modes\install.log   # every install run
-  ```
+* Hermes Agent **>= 0.21.3** (the unified agent + desktop package layout and
+  `ctx.rest` for the desktop half).
+* The desktop half is app-level: the app copies it out of the installed package and
+  loads it through the normal desktop-plugin pipeline (hot reload included). Like the
+  Python half, it stays disabled until you turn it on — **Capabilities → Plugins** for
+  the UI half, `plugins.enabled` for the Python half.
 
 ## Limits (honest ones)
 
-- **Windows-only v1.** No macOS/Linux installer ships today; the stub tells agents to stop.
-- **Hermes updates reset the checkout** — this is precisely why the Windows task
-  re-applies the patch. If an update lands while the task is off, run `install.ps1` once.
-- **Perfect per-entry queue freeze** (a queued message keeps the mode it had when
-  queued, even if you switch modes meanwhile) rides the desktop seam this repo
-  ships: the installer patches the renderer sources and rebuilds the app
-  (`desktop-patch/` + `install/build-desktop-seam.ps1`). The rebuild needs
-  node/npm and a few minutes (see `docs/limits.md`). Until it runs, the
-  staged-note channel covers the normal path (single sends and the busy queue
-  carry).
-- **The note is an instruction to the model, not a hard sandbox.** Ask mode is
-  enforced by a strict operating note (and the mandated closing line), not by
-  tool-gating in the core.
+* **The note is append-only.** Hermes injects hook context after the user message, so a
+  mode note rides the end of the turn. (The v1 patch could sandwich it before *and*
+  after; that seam belongs upstream — see `legacy/`.)
+* **Queued sends follow the mode at drain time.** The composer's middleware chain runs
+  when a queued message actually goes out, so switching modes while a message waits
+  changes the mode it travels with.
+* **Mid-turn steers** (plain Enter while the agent is busy) are sent by the desktop
+  directly; they carry whatever mode the backend already knows for that session.
+* **The backend half must be reachable.** It runs inside the same Hermes process as the
+  chat. If it is disabled or unreachable, the button still switches but no note travels:
+  the desktop half degrades silently and leaves a probe in `logs/desktop.log`.
+* Ask mode is a policy gate, not an OS sandbox — a malicious plugin could ignore it. It
+  exists to make an honest mode honest.
+
+## Verify it works
+
+```bash
+hermes plugins validate .                                  # manifest + declared capabilities
+python -m pytest -c tests/pytest.ini                       # the shipped suite (no Hermes needed)
+hermes plugins list | grep composer-modes                  # after installing
+```
+
+End-to-end recipe (hidden note in `api_content`, ask-mode block, desktop-half probes):
+[`docs/verification.md`](docs/verification.md).
+
+## Repository map
+
+```
+plugin.yaml     agent-half manifest (name, hooks, platforms, requires_hermes)
+__init__.py     register(ctx): the two hooks, the /mode command, the shipped skill
+modes.py        mode ids, labels and the operating notes (single source of truth)
+store.py        per-session mode state (file-backed, thread-safe, plugin-data/)
+enforce.py      the ask-mode policy gate (deny-list + terminal classifier)
+dashboard/      plugin_api.py — the REST namespace the desktop half talks to
+desktop/        plugin.js — mode button, plan card, plan reader pane, debug loop card
+skills/         the mode protocol as a loadable skill
+tests/          pytest suite (104 tests)
+docs/           architecture, limits, verification
+legacy/         the v1 patch pipeline (superseded — reference only)
+```
+
+Run the tests with `python -m pytest -c tests/pytest.ini`. The pytest config lives in
+`tests/` on purpose: the plugin needs an `__init__.py` at the repository root, and
+pytest turns a parent directory that has one into a package it cannot import.
 
 ## Uninstall
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File install\uninstall.ps1
+```bash
+hermes plugins remove composer-modes
 ```
 
-Hash-verified restore of the 5 files, plugin removal (a copy is kept under
-`%LOCALAPPDATA%\hermes\composer-modes\`), tasks deleted, backend restarted.
-
-## Documentation
-
-| Doc | For |
-|---|---|
-| [`AGENTS.md`](AGENTS.md) | the installing agent — runbook, verification, failure protocol |
-| [`docs/architecture.md`](docs/architecture.md) | how the channel works, file map, size formulas |
-| [`docs/limits.md`](docs/limits.md) | what is guaranteed, and where the edges are |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | probes, DB recipe, drift recovery |
-| [`install/cronjob.md`](install/cronjob.md) | the update cronjob, ready to paste |
-
-## The desktop seam (ships in this repo)
-
-The per-entry queue freeze rides the desktop renderer seam, and the **whole
-pipeline lives here**: anchored ops in `desktop-patch/` (generated from a
-verified diff, round-trip proven byte-for-byte), a transactional patcher
-(`patch_desktop.py`), and a build-and-swap step (`install/build-desktop-seam.ps1`
-+ `install/desktop-swap.ps1`) that patches the checkout, rebuilds the app with
-its own toolchain, verifies the staged build (the `fromQueue` marker), and swaps
-it in. `install.ps1` runs it by default; the 6 h guardian heals both the sources
-and the app after Hermes updates.
-
-The same seam is also proposed upstream as
-[PR #108242](https://github.com/NousResearch/hermes-agent/pull/108242), so stock
-builds may get it natively some day. Nothing here depends on that merge.
+The desktop half is removed with the package (the app drops its copy), and the mode
+state lives in `<hermes home>/plugin-data/composer-modes/state.json` if you want to
+delete it by hand.
 
 ## Credits
 
-Built by [@LisandroNahuelH](https://github.com/LisandroNahuelH) with the Hermes
-Agent desktop plugin SDK. MIT licensed — use it, fork it, ship it.
+Built by [@LisandroNahuelH](https://github.com/LisandroNahuelH) with the Hermes Agent
+desktop plugin SDK. MIT licensed — use it, fork it, ship it.

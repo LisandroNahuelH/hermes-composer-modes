@@ -1,174 +1,117 @@
 # AGENTS.md — the composer-modes runbook (read me before touching anything)
 
-You are an agent asked to install **Composer Modes for Hermes Agent** from this repo.
-Follow this file top to bottom. It is self-contained: repo layout, exact commands,
-expected output, and what to do when something fails.
+You are an agent working on **Composer Modes for Hermes Agent**: a *unified plugin
+package* (agent half in Python + desktop half in plain-JS ESM) for the Hermes desktop
+composer. This file is the runbook: layout, install, verification, failure protocol.
 
-**Supported upstream base:** `NousResearch/hermes-agent` @ `afe06f21f4` (2026-09-13),
-core patch `repo-2026-09-15-V6` + desktop patch `repo-2026-09-15-D2`. Upstream moves fast: if `patch.py` reports
-`anchors missing`, port the failing ops to the new base (pattern: CHANGELOG 12.2.1;
-re-run `patch.py --verify-only` until 20/20 anchors match) — never hand-edit the
-five core files.
+**No core patch, no renderer rebuild.** If you are looking for the v1 patch pipeline
+(`core-patch/`, `desktop-patch/`, `install/`), it lives in `legacy/` and is superseded —
+read `legacy/README.md` before touching it, and never run that installer on a machine
+that has the v13+ package installed.
 
-**Windows-only (v1).** If you are on macOS/Linux: stop. Run `bash install/install.sh`
-(which refuses), and tell the user the port is not shipped yet. Do not hand-patch.
+## 0. Preflight
 
-## 0. Preflight — verify, then stop or continue
-
-Check every line. If any fails, **stop and report exactly which one** (do not improvise):
-
-```powershell
-# OS
-[System.Environment]::OSVersion.Platform   # expect Win32NT
-# git present
-git --version                              # any 2.x
-# Hermes home + agent checkout (the installer ladders these too)
-Test-Path "$env:LOCALAPPDATA\hermes\hermes-agent\tui_gateway\methods_prompt.py"   # True expected
-# python for the checklist window (the installer picks the venv itself)
-Test-Path "$env:LOCALAPPDATA\hermes\hermes-agent\venv\Scripts\python.exe"         # True expected
+```bash
+hermes --version                    # >= 0.21.3 (unified package + ctx.rest)
+node --check desktop/plugin.js       # desktop half parses
+python -m pytest -c tests/pytest.ini # shipped suite, no Hermes needed
+hermes plugins validate .            # manifest + declared capabilities
 ```
 
-If the checkout lives elsewhere (profile, custom home), note it — every command below
-takes the same paths the installer detects; pass `-HermesHome`/`-AgentDir` explicitly
-when you have to.
+Windows note: run the terminal through Git Bash; pass `C:/…` paths (not `/c/…`) to
+native tools like `node`, `python`, `git`.
 
-## 1. Clone to a stable path
-
-```powershell
-$repo = Join-Path $env:USERPROFILE 'hermes-composer-modes'
-if (Test-Path $repo) { git -C $repo pull --ff-only } else { git clone <REPO_URL> $repo }
-```
-
-Stable matters: the Windows task and the update cronjob reference this path later.
-**Remember `$repo`** — you will reuse it in step 5 and the report.
-
-## 2. Dry run (writes nothing)
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\install\install.ps1" -WhatIf
-```
-
-Expected tail: `done plugin=whatif core=<unchanged|patched> restart=<skipped|whatif>` and
-exit code 0. If preflight fails (exit 2), report the message verbatim.
-
-## 3. Install (the real run)
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\install\install.ps1"
-if ($LASTEXITCODE -ne 0) { Write-Host "installer failed: $LASTEXITCODE (see below)" }
-```
-
-**Read the log** — the authoritative record (the console mirrors it):
-
-```powershell
-Get-Content "$env:LOCALAPPDATA\hermes\composer-modes\install.log" -Tail 40
-```
-
-Expected on a fresh install: `plugin installed`, `core patch exit=0` (+ `patched …`
-lines), `verify exit=0`, backend restart `scheduled`.
-
-**Expected “self-kill”**: when the core changed, the installer schedules a one-shot
-task that kills the backend ~45 s later; the app respawns it on the next message.
-If your own turn dies right after step 3, that is this restart, not a failure — the
-install already finished (log written) before the restart runs. Wait, then continue.
-The restart task is battery-safe since 12.2.2 — older installs (`0x41303`) never ran it
-on battery.
-
-## 3b. Desktop seam (queue freeze) - automatic, explained here
-
-The installer also patches the **desktop renderer** and rebuilds the app
-(`install\build-desktop-seam.ps1`, run as step 3b of install.ps1). Expected lines:
+## 1. Repository map
 
 ```
-desktop patch exit=0
-npm run build ok
-electron-builder ok
-staged build ok: ...
-win-unpacked.new staged + verified
-done desktop=patched build=built swap=scheduled (detached; the app closes + relaunches when it lands)
+plugin.yaml       agent-half manifest (name, hooks, platforms, requires_hermes)
+__init__.py       register(ctx): pre_llm_call, pre_tool_call, /mode, shipped skill
+modes.py          mode ids + the operating notes (single source of truth)
+store.py          per-session mode state — plugin-data/composer-modes/state.json
+enforce.py        ask-mode policy gate (tool deny-list + terminal classifier)
+dashboard/        manifest.json + plugin_api.py → /api/plugins/composer-modes/
+desktop/plugin.js the desktop half (mode button, cards, plan reader pane)
+skills/composer-modes/SKILL.md  the protocol, loadable as composer-modes:modes
+tests/            pytest suite (config in tests/pytest.ini — rootdir on purpose)
+docs/             architecture.md, limits.md, verification.md
+legacy/           the v1 patch pipeline (superseded, reference only)
 ```
 
-- No toolchain (node/npm missing): the step skips itself with a warning; the
-  staged-note channel still covers stock builds. `-SkipDesktopSeam` skips it
-  deliberately; everything else about the install is unaffected.
-- Switches on `build-desktop-seam.ps1`: `-Force` (rebuild even when the seam
-  looks current), `-NoSwap` (stage without swapping), `-WhatIf` (verify anchors
-  only, no writes, no build).
-- Logs: `state\desktop-build.log`, `state\app-swap.log`; manifests
-  `composer-modes-desktop-patch-manifest.json` (+ a `-tests-` twin) in the
-  checkout.
+## 2. Install (the whole thing)
 
-## 4. Guardian task
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "$repo\install\ensure-task.ps1"
-schtasks /query /tn HermesComposerModesEnsure | Select-String HermesComposerModesEnsure
+```bash
+hermes plugins install composer-modes      # catalog entry (or owner/repo before merge)
+hermes plugins enable composer-modes
 ```
 
-Expected: `task registered: HermesComposerModesEnsure (logon +30s, then every 6h)`
-and the query echoing the task. This is what re-applies the patch after Hermes
-updates.
+* The agent half lands in `<hermes home>/plugins/composer-modes/`.
+* The desktop half is copied by the Electron main process into
+  `<hermes home>/desktop-plugins/composer-modes/` (marker `.hermes-package.json`) and
+  loads through the normal desktop-plugin pipeline. A standalone folder of the same name
+  **without** the marker blocks that copy on purpose — remove it first if it is a v1
+  leftover.
 
-## 5. Update cronjob (second guardian)
+## 3. Verification checklist (prove it, then report)
 
-Open `$repo\install\cronjob.md`, take the paste-block, replace `<REPO_PATH>` with the
-real `$repo`, and create the cronjob in Hermes (weekly). The job pulls this repo,
-re-runs the installer, and sends the user one line.
+```bash
+H="$LOCALAPPDATA/hermes"
 
-## 6. Verification checklist (prove it works, then report)
+# 3a. agent half loaded — the plugin logs one line per register
+grep -aF 'composer-modes]' "$H/logs/desktop.log" | tail -3      # ... register ver=v2.0.0 ...
 
-```powershell
-$H = "$env:LOCALAPPDATA\hermes"
-# 6a. core gate
-& "$H\hermes-agent\venv\Scripts\python.exe" "$repo\core-patch\verify_core.py" --repo "$H\hermes-agent" --python "$H\hermes-agent\venv\Scripts\python.exe"
-#    expect: VERIFIED (exit 0)
-# 6b. plugin loaded (app open): last register probe
-Get-Content "$H\logs\desktop.log" -Tail 500 | Select-String 'composer-modes.*register' | Select-Object -Last 1
-#    expect a line with ver=v12.3 (or the version in versions.json)
-# 6c. hidden note end-to-end (optional but conclusive)
-#    Ask the user to send ONE message with any mode on, then:
-#    - read the newest row:  SELECT content, api_content FROM messages ORDER BY id DESC LIMIT 1;
-#      (state.db under the Hermes home) -> api_content is longer than content by exactly
-#      the note (+2 framing chars; Ask mode adds the note on both ends: +4 + 2*note_len)
-# 6d. desktop seam marker in the installed app (expect one hit)
-#    Select-String -Path "$env:LOCALAPPDATA\hermes\hermes-agent\apps\desktop\release\win-unpacked\resources\app.asar.unpacked\dist\assets\*.js" -SimpleMatch 'fromQueue' -List | Select-Object -First 1
+# 3b. backend routes mounted (same process as the chat)
+grep -aF 'Mounted plugin API routes: /api/plugins/composer-modes/' "$H/logs/"*.log | tail -2
+
+# 3c. desktop half materialized + loaded
+ls "$H/desktop-plugins/composer-modes/"                          # plugin.js + .hermes-package.json
+grep -aF '[cm-pa]' "$H/logs/desktop.log" | tail -5               # register v13 + probes
+
+# 3d. hidden note, end to end (conclusive): send one message in a non-agent mode, then
+python - <<'PY'
+import sqlite3, os
+db = os.path.join(os.environ["LOCALAPPDATA"], "hermes", "state.db")
+c = sqlite3.connect(db)
+row = c.execute("SELECT content, api_content FROM messages WHERE role='user' ORDER BY id DESC LIMIT 1").fetchone()
+print("content == typed bytes:", row[0][:80])
+print("api_content longer by:", len(row[1]) - len(row[0]))
+PY
+# api_content must contain the mode note; content must NOT.
+
+# 3e. ask enforcement: ask for a file change in ask mode → the turn reports a
+#     [composer-modes] block, and the file is untouched.
 ```
 
-Report to the user, in their language, as a short table: installed version,
-plugin probe line, core `VERIFIED`, task registered, cronjob created, and the
-one-liner for the live test result.
+Report the real values — never paste a checklist you did not run.
 
-## Failure protocol
+## 4. Failure protocol
 
 | Symptom | Meaning | Do |
 |---|---|---|
-| installer exit 2 | preflight failed (no home/checkout/python) | report the exact message; nothing was touched |
-| `core patch exit=2` | anchors missing = upstream drift | **nothing was written**; open an issue with the log tail + `git -C <checkout> rev-parse HEAD` |
-| `core patch exit=5` | token present but targets incomplete (edited after patching) | do not force; report; ask the user before restoring backups |
-| `verify exit=1` | verification failed after patching | the patcher **rolled back automatically** and the backend was NOT restarted; report the log |
-| `ROLLBACK INCOMPLETE (exit 4)` | restore failed (locked file) | the log lists the file(s); restore them from the listed `.bak-*`; then report |
-| installer exit 3 | another run holds the lock | wait 30 min or rerun later; it is a no-op guard, not an error |
-| task never ran (`0x41303`/`267011` in `schtasks /query /v`) | pre-12.2.2 restart tasks are blocked on battery | recreate via `install.ps1` (12.2.2+ is battery-safe), or clear the battery condition by hand |
-| desktop patch exit=2 | renderer anchors missing = upstream drift | nothing written; re-anchor via `desktop-patch/gen_ops.py` (see docs/troubleshooting.md) |
-| desktop build failed | toolchain/compile error in step 3b | the live app is untouched (staging build); read `desktop-build.log`, fix, re-run `install.ps1 -Repair` |
-| freeze gone after a Hermes update | the update rebuilt the stock app | `install.ps1 -Repair` (guardian: within 6 h) or `build-desktop-seam.ps1 -Force` |
+| `hermes plugins list` shows the plugin "not enabled" | allow-list gate | `hermes plugins enable composer-modes` |
+| no `register ver=` line in `desktop.log` | agent half not loaded | check the enable list, then `grep -ai "plugin" logs/desktop.log \| tail` |
+| no `Mounted plugin API routes` line | backend not mounted (disabled, or already imported before enabling) | enable the plugin, restart the backend (`hermes serve` child of the app) |
+| desktop half missing under `desktop-plugins/` | a standalone folder of the same name exists (v1 leftover) | delete that folder, then reload plugins in the app (⌘K → Reload desktop plugins) |
+| mode button visible but no note reaches the model | backend unreachable from the desktop half | probes: `grep -aF '[cm-pa] stage' logs/desktop.log` shows `stage FAIL …` with the error |
+| ask mode blocks a command the user wanted | the terminal classifier is fail-closed | read the block message; ask in Agent mode, or set `HERMES_COMPOSER_MODES_ASK_ENFORCE=0` |
+| `hermes plugins validate .` fails on declared hooks | manifest drifted from `register()` | fix `plugin.yaml` to match what `__init__.py` registers — never the other way around |
 
-Never edit the five patched files by hand to “make it work”, never delete the
-manifest, and never re-run the installer with `--force` flags that do not exist.
+## 5. Changing the code
 
-## Manual path (for the user, if they prefer)
+* One rule per change; keep `modes.py` the only place a mode's words live.
+* After any change: `node --check desktop/plugin.js` (if touched),
+  `python -m pytest -c tests/pytest.ini`, `hermes plugins validate .`.
+* Bump `VERSION` in `__init__.py`, `dashboard/plugin_api.py`, `plugin.yaml`,
+  `dashboard/manifest.json` and `desktop/plugin.js`'s `VER` together.
+* Commit style: `feat|fix|docs|test|chore(scope): …`. The catalog pins a commit SHA —
+  a released version must be a pushed commit, and the catalog entry bumped in a
+  separate PR against `NousResearch/hermes-agent` (`plugin-catalog/composer-modes.yaml`).
 
-```powershell
-git clone <REPO_URL> "$env:USERPROFILE\hermes-composer-modes"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\hermes-composer-modes\install\install.ps1"
-powershell -NoProfile -ExecutionPolicy Bypass -File "$env:USERPROFILE\hermes-composer-modes\install\ensure-task.ps1"
-```
+## 6. What you must not do
 
-Then `install/cronjob.md` for the updater, and `install/uninstall.ps1` to undo everything.
-
-## What you must not do
-
-- Do not patch anything outside: the 5 core files, the plugin folder, the state dir
-  (`%LOCALAPPDATA%\hermes\composer-modes\`), the scheduled task, the cronjob.
-- Do not hand-edit the core for “fixes” — drift is handled by reporting, not patching.
-- Do not run the installer twice in parallel (the lock guards you; respect exit 3).
+* Do not reintroduce a core patch or a renderer rebuild — this package ships without
+  them by design.
+* Do not write the operating notes into `draft.text`: the note must only ever ride the
+  model-facing bytes (`api_content`), never the bubble or the transcript.
+* Do not let a hook or the desktop half raise into the host: hooks return `None` on
+  failure, the middleware returns the draft unchanged.
+* Do not run `legacy/install/install.ps1` on a machine that has this package installed.
