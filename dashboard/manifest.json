@@ -1,0 +1,8 @@
+{
+  "name": "composer-modes",
+  "label": "Composer Modes",
+  "description": "Mode state for the desktop composer (ask / agent / plan / debug).",
+  "version": "2.0.0",
+  "api": "plugin_api.py",
+  "tab": { "hidden": true }
+}
