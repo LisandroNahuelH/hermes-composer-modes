@@ -19,6 +19,7 @@ Registered surface
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 from . import enforce
 from .modes import DEFAULT_MODE, LABELS, MODE_IDS, is_mode, is_slash_shaped, note_for
@@ -32,9 +33,13 @@ _SKILL_PATH = Path(__file__).parent / "skills" / "composer-modes" / "SKILL.md"
 
 
 def _emit(message: str) -> None:
-    """Best-effort diagnostic — never let logging break a turn."""
+    """Best-effort diagnostic — never let logging break a turn.
+
+    Goes to stderr so it cannot corrupt machine-readable stdout (``--json``
+    output from ``hermes ...`` subcommands, plugin CLI replies).
+    """
     try:
-        print(f"[{PLUGIN_NAME}] {message}", flush=True)
+        print(f"[{PLUGIN_NAME}] {message}", file=sys.stderr, flush=True)
     except Exception:
         pass
 
